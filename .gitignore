@@ -204,3 +204,7 @@ cython_debug/
 *.Rhistory
 *.RData
 *.Ruserdata
+.Rhistory
+.RData
+.Ruserdata
+
