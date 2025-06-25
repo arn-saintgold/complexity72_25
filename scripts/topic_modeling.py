@@ -169,9 +169,31 @@ def main():
     topic_info, document_info = topic_modeling(
         args.filename, args.text_column, args.optional_columns
     )
-    print(f"Identified {len(set(topic_info)-1)} topics.")
-    print(f"Noise percentage: {round(100*(len(document_info.query("Topic == -1"))/len(document_info)),2)}%")
+    print(f"Identified {len(set(topic_info) - 1)} topics.")
+    print(
+        f"Noise percentage: {round(100 * (len(document_info.query('Topic == -1')) / len(document_info)), 2)}%"
+    )
     # print(topic_info)
+
+    os.makedirs("data", exist_ok=True)
+    os.makedirs(os.path.join("data", "processed"), exist_ok=True)
+    topic_info.to_csv(
+        os.path.join(
+            "data",
+            "processed",
+            "topic_info_" + args.filename.split("/")[-1].split(".")[0],
+        )
+        + ".csv"
+    )
+    document_info.to_csv(
+        os.path.join(
+            "data",
+            "processed",
+            "document_info" + args.filename.split("/")[-1].split(".")[0],
+        )
+        + ".csv"
+    )
+
 
 if __name__ == "__main__":
     main()

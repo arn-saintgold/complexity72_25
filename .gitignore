@@ -198,6 +198,7 @@ cython_debug/
 *.csv
 *.parquet
 *.json
+*.npy
 
 # R
 
