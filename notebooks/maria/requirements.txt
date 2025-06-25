@@ -1,4 +1,6 @@
 pandas
-tqdm
+numpy
+torch
+transformers
 emoji
-matplotlib
+tqdm
