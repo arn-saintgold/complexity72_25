@@ -22,7 +22,7 @@ This repository contains a tweet cleaning pipeline and classification tools for 
 | **Offensive**      | `cardiffnlp/twitter-roberta-base-offensive`              |
 
 Each classifier:
-- Returns predicted label (e.g., `positive`, `racism`, `offensive`)
+- Returns predicted label 
 - Returns softmax probabilities for each class
 - Supports GPU acceleration with CUDA
 
