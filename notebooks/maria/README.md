@@ -35,7 +35,7 @@ The pipeline is implemented in:
 
 Each notebook demonstrates how to clean tweets and run each classifier, with outputs stored in new DataFrame columns.
 
-## 📦 Installation
+## Installation
 
 ```bash
 pip install -r requirements.txt
