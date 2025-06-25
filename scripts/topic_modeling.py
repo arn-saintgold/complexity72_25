@@ -3,7 +3,6 @@
 # The optional columns are used for temporal or categorical analysis.
 
 import os
-import sys
 import argparse
 import pandas as pd
 import numpy as np
@@ -70,7 +69,7 @@ def topic_modeling(
     # Take subset of data
 
     # embedding_model
-    embedding_model = SentenceTransformer(embedding_model_name, device="cuda")
+    embedding_model = SentenceTransformer("all-MiniLM-L6-v2", device="cuda")
 
     # Check if the specified text column exists
     if text_column not in df.columns:
@@ -88,7 +87,7 @@ def topic_modeling(
         embeddings = embedding_model.encode(texts)
 
     # Create a CountVectorizer
-    vectorizer = CountVectorizer(stop_words="english")
+    # vectorizer = CountVectorizer(stop_words="english")
 
     # Search for the best parameters for UMAP and HDBSCAN
     best_params = search_params(embeddings)
