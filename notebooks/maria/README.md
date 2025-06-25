@@ -2,7 +2,7 @@
 
 This repository contains a tweet cleaning pipeline and classification tools for analyzing tweets using transformer models. The goal is to prepare social media text for NLP tasks and classify it across sentiment, hate speech, and offensiveness dimensions.
 
-## 🧹 Cleaning Features
+## Cleaning Features
 
 - HTML entity unescaping
 - URL and mention removal
@@ -13,7 +13,7 @@ This repository contains a tweet cleaning pipeline and classification tools for 
   - Tweets with no alphabetic content
   - Hashtag-only or emoji-only tweets
 
-## 🤖 Classification Tasks (RoBERTa-based)
+## Classification Tasks (RoBERTa-based)
 
 | Task               | Model Name                                               |
 |--------------------|----------------------------------------------------------|
@@ -26,12 +26,12 @@ Each classifier:
 - Returns softmax probabilities for each class
 - Supports GPU acceleration with CUDA
 
-## 🧪 Usage
+## Usage
 
 The pipeline is implemented in:
 
-📘 [`data_cleaning_for_RoBERTa.ipynb`](notebooks/maria/data_cleaning_for_RoBERTa.ipynb)  
-📘 [`inference_roberta_models.ipynb`](notebooks/maria/inference_roberta_models.ipynb)
+ [`data_cleaning_for_RoBERTa.ipynb`](notebooks/maria/data_cleaning_for_RoBERTa.ipynb)  
+ [`inference_roberta_models.ipynb`](notebooks/maria/inference_roberta_models.ipynb)
 
 Each notebook demonstrates how to clean tweets and run each classifier, with outputs stored in new DataFrame columns.
 
