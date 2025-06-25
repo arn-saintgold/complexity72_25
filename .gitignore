@@ -198,13 +198,16 @@ cython_debug/
 *.csv
 *.parquet
 *.json
-
+*.zip
+*.gzip
 # R
 
 *.Rhistory
 *.RData
 *.Ruserdata
+*.rds
 .DS_Store
 .Rhistory
 .RData
 .Ruserdata
+.Rproj.user
