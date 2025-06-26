@@ -13,23 +13,27 @@ from sklearn.feature_extraction.text import CountVectorizer
 from bertopic.vectorizers import ClassTfidfTransformer
 from bertopic import BERTopic
 from sentence_transformers import SentenceTransformer
+from cuml.cluster import HDBSCAN as cHDBSCAN
+from cuml.manifold import UMAP as cUMAP
+import shutil
 
-DEBUG = False
+DEBUG = True
+GPU_ACCELERATED = True
+
 
 def search_params(embeddings):
     global DEBUG
-    print('Starting Parameter selection')
+    print("Starting Parameter selection")
     if DEBUG:
-        
         max_relative_validity = 0
         best_params = None
-        for n_components in [5, 20, 50]:
-            print(f'{n_components=}')
+        for n_components in [2, 5, 10, 20, 50]:
+            print(f"{n_components=}")
             umap_model = PCA(n_components)
             reduced_embeddings = umap_model.fit_transform(embeddings)
-            for min_cluster_size in [15, 50, 100, 200]:
+            for min_cluster_size in [10, 20, 50, 100, 200, 500]:
                 for cluster_selection_method in ["eom", "leaf"]:
-                    print(f'{min_cluster_size=}, {cluster_selection_method=}')
+                    print(f"{min_cluster_size=}, {cluster_selection_method=}")
                     hdbscan_model = HDBSCAN(
                         min_cluster_size=min_cluster_size,
                         metric="euclidean",
@@ -55,8 +59,8 @@ def search_params(embeddings):
     max_relative_validity = 0
     best_params = None
     for n_neighbors in [15, 50]:
-        for n_components in [5, 20, 50]:
-            print(f'{n_components=}, {n_neighbors=}')
+        for n_components in [5, 10, 20, 50]:
+            print(f"{n_components=}, {n_neighbors=}")
             umap_model = UMAP(
                 n_neighbors=n_neighbors,
                 n_components=n_components,
@@ -64,9 +68,9 @@ def search_params(embeddings):
                 metric="cosine",
             )
             reduced_embeddings = umap_model.fit_transform(embeddings)
-            for min_cluster_size in [15, 50, 100, 200]:
+            for min_cluster_size in [10, 20, 50, 100, 200, 500]:
                 for cluster_selection_method in ["eom", "leaf"]:
-                    print(f'{min_cluster_size=}, {cluster_selection_method=}')
+                    print(f"{min_cluster_size=}, {cluster_selection_method=}")
                     hdbscan_model = HDBSCAN(
                         min_cluster_size=min_cluster_size,
                         metric="euclidean",
@@ -115,31 +119,31 @@ def topic_modeling(
     if text_column not in df.columns:
         raise ValueError(f"Column '{text_column}' does not exist in the DataFrame.")
 
+    actual_filename = filename.split('/')[-1]
+
     # Extract the text data
     texts = df[text_column].astype(str).tolist()
-    embedding_path = os.path.join('data','processed','covid_tweets_en.parquet.npy')
-    print(f'getting embeddings from {embedding_path}')
+    embedding_path = os.path.join("data", "processed", actual_filename+'.npy')
+    print(f"getting embeddings from {embedding_path}")
     embeddings = (
-        np.load(embedding_path)#, allow_pickle=True).item()
+        np.load(embedding_path)  # , allow_pickle=True).item()
         if os.path.exists(embedding_path)
         else None
     )
     if embeddings is None:
-        raise ValueError("EMBEDDINGS NOT FOUND") #print('ENCODING TEXT')
+        raise ValueError("EMBEDDINGS NOT FOUND")  # print('ENCODING TEXT')
         embeddings = embedding_model.encode(texts)
     else:
-        print('PRECOMPUTED EMBEDDINGS FOUND')
-
-    # Create a CountVectorizer
-    # vectorizer = CountVectorizer(stop_words="english")
-
-
+        print("PRECOMPUTED EMBEDDINGS FOUND")
+    
     unique_rows = df[df[text_column].map(df[text_column].value_counts()) == 1]
     unique_mask = df[text_column].map(df[text_column].value_counts()) == 1
 
     # Select corresponding rows from the embeddings array
     unique_embeddings = embeddings[unique_mask.to_numpy()]
     unique_texts = unique_rows[text_column]
+    # Create a CountVectorizer
+    # vectorizer = CountVectorizer(stop_words="english")
 
     # Search for the best parameters for UMAP and HDBSCAN
     if not DEBUG:
@@ -149,18 +153,31 @@ def topic_modeling(
             n_components=best_params[1],
             min_dist=0.0,
             metric="cosine",
-            low_memory=True,
         )
+    elif GPU_ACCELERATED:
+        umap_model = cUMAP(n_components=5, min_dist=0.0, metric="cosine")
+
     else:
         best_params = search_params(embeddings)
         umap_model = PCA(best_params[1])
-    hdbscan_model = HDBSCAN(
-        min_cluster_size=best_params[2],
-        metric="euclidean",
-        cluster_selection_method=best_params[3],
-        prediction_data=True,
-        gen_min_span_tree=True,
-    )
+
+
+
+    if GPU_ACCELERATED:
+        hdbscan_model = cHDBSCAN(
+            min_cluster_size=15,
+            metric="euclidean",
+            cluster_selection_method="eom",
+            prediction_data=True,
+        )
+    else:
+        hdbscan_model = HDBSCAN(
+            min_cluster_size=best_params[2],
+            metric="euclidean",
+            cluster_selection_method=best_params[3],
+            prediction_data=True,
+            gen_min_span_tree=True,
+        )
     # HDBSCAN(min_cluster_size=min_cluster_size, metric='euclidean', cluster_selection_method=cluster_selection_method, prediction_data=True, gen_min_span_tree=True)
 
     # Create a BERTopic model
@@ -170,7 +187,7 @@ def topic_modeling(
         hdbscan_model=hdbscan_model,
         vectorizer_model=CountVectorizer(ngram_range=(1, 2), stop_words="english"),
         ctfidf_model=ClassTfidfTransformer(),
-        # representation_model=unique_embeddings
+        # representation_model=
         verbose=True,
         calculate_probabilities=True,
         language="english",
@@ -185,11 +202,15 @@ def topic_modeling(
     # Save the model
     model_filename = filename.split("/")[-1] + ".topic_model"
     model_path = os.path.join("models", model_filename.split()[-1])
-    topic_model.save(model_path, serialization='safetensors')
+    if os.path.exists(model_path):
+        shutil.rmtree(model_path)  # Delete existing folder
+
+    topic_model.save(model_path, serialization='pytorch')
     print(f"Topic model saved to {model_filename}.")
 
     # TODO return dataset with topics
     return topic_model.get_topic_info(), topic_model.get_document_info(unique_texts)
+
 
 def count_months_passed(df, col_name):
     df[col_name] = pd.to_datetime(df[col_name])
