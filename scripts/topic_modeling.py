@@ -7,18 +7,56 @@ import argparse
 import pandas as pd
 import numpy as np
 from umap import UMAP
+from sklearn.decomposition import PCA
 from hdbscan import HDBSCAN
 from sklearn.feature_extraction.text import CountVectorizer
 from bertopic.vectorizers import ClassTfidfTransformer
 from bertopic import BERTopic
 from sentence_transformers import SentenceTransformer
 
+DEBUG = True
 
 def search_params(embeddings):
+    global DEBUG
+    print('Starting Parameter selection')
+    if DEBUG:
+        
+        max_relative_validity = 0
+        best_params = None
+        for n_components in [2, 5, 10, 20, 50]:
+            print(f'{n_components=}')
+            umap_model = PCA(n_components)
+            reduced_embeddings = umap_model.fit_transform(embeddings)
+            for min_cluster_size in [10, 20, 50, 100, 200, 500]:
+                for cluster_selection_method in ["eom", "leaf"]:
+                    print(f'{min_cluster_size=}, {cluster_selection_method=}')
+                    hdbscan_model = HDBSCAN(
+                        min_cluster_size=min_cluster_size,
+                        metric="euclidean",
+                        cluster_selection_method=cluster_selection_method,
+                        prediction_data=True,
+                        gen_min_span_tree=True,
+                    )
+                    relative_validity = hdbscan_model.fit(
+                        reduced_embeddings
+                    ).relative_validity_
+                    if relative_validity > max_relative_validity:
+                        max_relative_validity = relative_validity
+                        best_params = (
+                            None,
+                            n_components,
+                            min_cluster_size,
+                            cluster_selection_method,
+                        )
+        print(
+            f"Best parameters: n_components={best_params[1]}, min_cluster_size={best_params[2]}, cluster_selection_method={best_params[3]}, max_relative_validity={max_relative_validity}"
+        )
+        return best_params
     max_relative_validity = 0
     best_params = None
     for n_neighbors in [15, 50]:
-        for n_components in [2, 5, 10, 20, 50]:
+        for n_components in [5, 10, 20, 50]:
+            print(f'{n_components=}, {n_neighbors=}')
             umap_model = UMAP(
                 n_neighbors=n_neighbors,
                 n_components=n_components,
@@ -28,6 +66,7 @@ def search_params(embeddings):
             reduced_embeddings = umap_model.fit_transform(embeddings)
             for min_cluster_size in [10, 20, 50, 100, 200, 500]:
                 for cluster_selection_method in ["eom", "leaf"]:
+                    print(f'{min_cluster_size=}, {cluster_selection_method=}')
                     hdbscan_model = HDBSCAN(
                         min_cluster_size=min_cluster_size,
                         metric="euclidean",
@@ -59,6 +98,7 @@ def clean_dataframe(df, col_name):
 def topic_modeling(
     filename, text_column, embedding_model_name="all-MiniLM-L6-v2", *args, **kwargs
 ):
+    global DEBUG
     # Load the data
     if filename.endswith(".parquet"):
         df = clean_dataframe(pd.read_parquet(filename), text_column)
@@ -77,26 +117,34 @@ def topic_modeling(
 
     # Extract the text data
     texts = df[text_column].astype(str).tolist()
-
+    embedding_path = os.path.join('data','processed','covid_tweets_en.parquet.npy')
+    print(f'getting embeddings from {embedding_path}')
     embeddings = (
-        np.load(filename + ".npy", allow_pickle=True).item()
-        if os.path.exists(filename + ".npy")
+        np.load(embedding_path)#, allow_pickle=True).item()
+        if os.path.exists(embedding_path)
         else None
     )
     if embeddings is None:
+        raise ValueError("EMBEDDINGS NOT FOUND") #print('ENCODING TEXT')
         embeddings = embedding_model.encode(texts)
+    else:
+        print('PRECOMPUTED EMBEDDINGS FOUND')
 
     # Create a CountVectorizer
     # vectorizer = CountVectorizer(stop_words="english")
 
     # Search for the best parameters for UMAP and HDBSCAN
-    best_params = search_params(embeddings)
-    umap_model = UMAP(
-        n_neighbors=best_params[0],
-        n_components=best_params[1],
-        min_dist=0.0,
-        metric="cosine",
-    )
+    if not DEBUG:
+        best_params = search_params(embeddings)
+        umap_model = UMAP(
+            n_neighbors=best_params[0],
+            n_components=best_params[1],
+            min_dist=0.0,
+            metric="cosine",
+        )
+    else:
+        best_params = search_params(embeddings)
+        umap_model = PCA(best_params[1])
     hdbscan_model = HDBSCAN(
         min_cluster_size=best_params[2],
         metric="euclidean",
@@ -168,7 +216,7 @@ def main():
     topic_info, document_info = topic_modeling(
         args.filename, args.text_column, args.optional_columns
     )
-    print(f"Identified {len(set(topic_info) - 1)} topics.")
+    print(f"Identified {len(topic_info) - 1} topics.")
     print(
         f"Noise percentage: {round(100 * (len(document_info.query('Topic == -1')) / len(document_info)), 2)}%"
     )
