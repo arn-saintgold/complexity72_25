@@ -14,7 +14,7 @@ from bertopic.vectorizers import ClassTfidfTransformer
 from bertopic import BERTopic
 from sentence_transformers import SentenceTransformer
 
-DEBUG = True
+DEBUG = False
 
 def search_params(embeddings):
     global DEBUG
@@ -23,11 +23,11 @@ def search_params(embeddings):
         
         max_relative_validity = 0
         best_params = None
-        for n_components in [2, 5, 10, 20, 50]:
+        for n_components in [5, 20, 50]:
             print(f'{n_components=}')
             umap_model = PCA(n_components)
             reduced_embeddings = umap_model.fit_transform(embeddings)
-            for min_cluster_size in [10, 20, 50, 100, 200, 500]:
+            for min_cluster_size in [15, 50, 100, 200]:
                 for cluster_selection_method in ["eom", "leaf"]:
                     print(f'{min_cluster_size=}, {cluster_selection_method=}')
                     hdbscan_model = HDBSCAN(
@@ -55,7 +55,7 @@ def search_params(embeddings):
     max_relative_validity = 0
     best_params = None
     for n_neighbors in [15, 50]:
-        for n_components in [5, 10, 20, 50]:
+        for n_components in [5, 20, 50]:
             print(f'{n_components=}, {n_neighbors=}')
             umap_model = UMAP(
                 n_neighbors=n_neighbors,
@@ -64,7 +64,7 @@ def search_params(embeddings):
                 metric="cosine",
             )
             reduced_embeddings = umap_model.fit_transform(embeddings)
-            for min_cluster_size in [10, 20, 50, 100, 200, 500]:
+            for min_cluster_size in [15, 50, 100, 200]:
                 for cluster_selection_method in ["eom", "leaf"]:
                     print(f'{min_cluster_size=}, {cluster_selection_method=}')
                     hdbscan_model = HDBSCAN(
@@ -133,6 +133,14 @@ def topic_modeling(
     # Create a CountVectorizer
     # vectorizer = CountVectorizer(stop_words="english")
 
+
+    unique_rows = df[df[text_column].map(df[text_column].value_counts()) == 1]
+    unique_mask = df[text_column].map(df[text_column].value_counts()) == 1
+
+    # Select corresponding rows from the embeddings array
+    unique_embeddings = embeddings[unique_mask.to_numpy()]
+    unique_texts = unique_rows[text_column]
+
     # Search for the best parameters for UMAP and HDBSCAN
     if not DEBUG:
         best_params = search_params(embeddings)
@@ -141,6 +149,7 @@ def topic_modeling(
             n_components=best_params[1],
             min_dist=0.0,
             metric="cosine",
+            low_memory=True,
         )
     else:
         best_params = search_params(embeddings)
@@ -161,7 +170,7 @@ def topic_modeling(
         hdbscan_model=hdbscan_model,
         vectorizer_model=CountVectorizer(ngram_range=(1, 2), stop_words="english"),
         ctfidf_model=ClassTfidfTransformer(),
-        # representation_model=
+        # representation_model=unique_embeddings
         verbose=True,
         calculate_probabilities=True,
         language="english",
@@ -171,16 +180,16 @@ def topic_modeling(
     #                       calculate_probabilities=True, verbose=True)
 
     # Fit the model to the texts
-    topics, _ = topic_model.fit_transform(texts, embeddings=embeddings)
+    topics, _ = topic_model.fit_transform(unique_texts, embeddings=unique_embeddings)
 
     # Save the model
     model_filename = filename.split("/")[-1] + ".topic_model"
-    topic_model.save(os.path.join("models", model_filename.split()[-1]))
+    model_path = os.path.join("models", model_filename.split()[-1])
+    topic_model.save(model_path, serialization='safetensors')
     print(f"Topic model saved to {model_filename}.")
 
     # TODO return dataset with topics
-    return topic_model.get_topic_info(), topic_model.get_document_info(texts)
-
+    return topic_model.get_topic_info(), topic_model.get_document_info(unique_texts)
 
 def count_months_passed(df, col_name):
     df[col_name] = pd.to_datetime(df[col_name])
@@ -236,7 +245,7 @@ def main():
         os.path.join(
             "data",
             "processed",
-            "document_info" + args.filename.split("/")[-1].split(".")[0],
+            "document_info_" + args.filename.split("/")[-1].split(".")[0],
         )
         + ".csv"
     )
