@@ -15,21 +15,21 @@ from bertopic import BERTopic
 from sentence_transformers import SentenceTransformer
 
 DEBUG = False
+DEVICE = 'cpu'
 
 def search_params(embeddings):
     global DEBUG
-    print('Starting Parameter selection')
+    print("Starting Parameter selection")
     if DEBUG:
-        
         max_relative_validity = 0
         best_params = None
         for n_components in [5, 20, 50]:
-            print(f'{n_components=}')
+            print(f"{n_components=}")
             umap_model = PCA(n_components)
             reduced_embeddings = umap_model.fit_transform(embeddings)
             for min_cluster_size in [15, 50, 100, 200]:
                 for cluster_selection_method in ["eom", "leaf"]:
-                    print(f'{min_cluster_size=}, {cluster_selection_method=}')
+                    print(f"{min_cluster_size=}, {cluster_selection_method=}")
                     hdbscan_model = HDBSCAN(
                         min_cluster_size=min_cluster_size,
                         metric="euclidean",
@@ -56,7 +56,7 @@ def search_params(embeddings):
     best_params = None
     for n_neighbors in [15, 50]:
         for n_components in [5, 20, 50]:
-            print(f'{n_components=}, {n_neighbors=}')
+            print(f"{n_components=}, {n_neighbors=}")
             umap_model = UMAP(
                 n_neighbors=n_neighbors,
                 n_components=n_components,
@@ -66,7 +66,7 @@ def search_params(embeddings):
             reduced_embeddings = umap_model.fit_transform(embeddings)
             for min_cluster_size in [15, 50, 100, 200]:
                 for cluster_selection_method in ["eom", "leaf"]:
-                    print(f'{min_cluster_size=}, {cluster_selection_method=}')
+                    print(f"{min_cluster_size=}, {cluster_selection_method=}")
                     hdbscan_model = HDBSCAN(
                         min_cluster_size=min_cluster_size,
                         metric="euclidean",
@@ -108,39 +108,47 @@ def topic_modeling(
         raise ValueError("Extension not recognized")
     # Take subset of data
 
+
+    global DEVICE
     # embedding_model
-    embedding_model = SentenceTransformer("all-MiniLM-L6-v2", device="cuda")
+    embedding_model = SentenceTransformer("all-MiniLM-L6-v2", device=DEVICE)
 
     # Check if the specified text column exists
     if text_column not in df.columns:
         raise ValueError(f"Column '{text_column}' does not exist in the DataFrame.")
 
+    actual_filename = filename.split('/')[-1]
     # Extract the text data
     texts = df[text_column].astype(str).tolist()
-    embedding_path = os.path.join('data','processed','covid_tweets_en.parquet.npy')
-    print(f'getting embeddings from {embedding_path}')
+    embedding_path = os.path.join('data','processed',actual_filename+'.npy')
+    print(f"getting embeddings from {embedding_path}")
     embeddings = (
-        np.load(embedding_path)#, allow_pickle=True).item()
+        np.load(embedding_path)  # , allow_pickle=True).item()
         if os.path.exists(embedding_path)
         else None
     )
     if embeddings is None:
-        raise ValueError("EMBEDDINGS NOT FOUND") #print('ENCODING TEXT')
+        raise ValueError("EMBEDDINGS NOT FOUND")  # print('ENCODING TEXT')
         embeddings = embedding_model.encode(texts)
     else:
-        print('PRECOMPUTED EMBEDDINGS FOUND')
+        print("PRECOMPUTED EMBEDDINGS FOUND")
 
     # Create a CountVectorizer
     # vectorizer = CountVectorizer(stop_words="english")
 
-
-    unique_rows = df[df[text_column].map(df[text_column].value_counts()) == 1]
     unique_mask = df[text_column].map(df[text_column].value_counts()) == 1
-
+    unique_rows = df[unique_mask]
+    unique_texts = unique_rows[text_column]
+    
     # Select corresponding rows from the embeddings array
     unique_embeddings = embeddings[unique_mask.to_numpy()]
-    unique_texts = unique_rows[text_column]
-
+    
+    # Free some spce
+    embeddings = None
+    df = None
+    unique_mask = None
+    unique_rows = None
+    
     # Search for the best parameters for UMAP and HDBSCAN
     if not DEBUG:
         best_params = search_params(embeddings)
@@ -185,11 +193,12 @@ def topic_modeling(
     # Save the model
     model_filename = filename.split("/")[-1] + ".topic_model"
     model_path = os.path.join("models", model_filename.split()[-1])
-    topic_model.save(model_path, serialization='safetensors')
+    topic_model.save(model_path, serialization="safetensors")
     print(f"Topic model saved to {model_filename}.")
 
     # TODO return dataset with topics
     return topic_model.get_topic_info(), topic_model.get_document_info(unique_texts)
+
 
 def count_months_passed(df, col_name):
     df[col_name] = pd.to_datetime(df[col_name])

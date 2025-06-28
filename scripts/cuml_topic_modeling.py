@@ -106,7 +106,7 @@ def topic_modeling(
     # Load the data
     if filename.endswith(".parquet"):
         df = clean_dataframe(pd.read_parquet(filename), text_column)
-    elif filename.endswith("csv"):
+    elif filename.endswith(".csv"):
         df = clean_dataframe(pd.read_csv(filename), text_column)
     else:
         raise ValueError("Extension not recognized")
