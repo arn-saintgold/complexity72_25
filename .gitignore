@@ -194,15 +194,18 @@ cython_debug/
 .cursorindexingignore
 
 # data
-
 *.csv
 *.parquet
 *.json
 *.zip
 *.gzip
-*.npy
-# R
 
+
+# Python
+*.npy
+*.topic_model
+
+# R
 *.Rhistory
 *.RData
 *.Ruserdata
