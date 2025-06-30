@@ -3,6 +3,13 @@
 # The optional columns are used for temporal or categorical analysis.
 # It uses fast_hdbscan for a fully parallelized hdbscan implementation
 #  and hdbscan's validity index function for parameter selection.
+# 
+# Validity Index references:
+# Moulavi, D., Jaskowiak, P.A., Campello, R.J., Zimek, A. and Sander, J.,
+# 2014. Density-Based Clustering Validation. In SDM (pp. 839-847).
+# 
+# fast_hdbscan github:
+# https://github.com/TutteInstitute/fast_hdbscan
 
 import os
 import argparse
@@ -45,7 +52,7 @@ def search_params(embeddings):
                         metric="euclidean",
                     )
                     labels = hdbscan_model.fit_predict(reduced_embeddings)
-                    validity_value = validity_index(reduced_embeddings.astype(np.float64), labels)
+                    validity_value = validity_index(reduced_embeddings, labels)
                     
                     if validity_value > max_validity_value:
                         max_validity_value = validity_value
