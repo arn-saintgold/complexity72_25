@@ -45,7 +45,7 @@ def search_params(embeddings):
                         metric="euclidean",
                     )
                     labels = hdbscan_model.fit_predict(reduced_embeddings)
-                    validity_value = validity_index(reduced_embeddings, labels)
+                    validity_value = validity_index(reduced_embeddings.astype(np.float64), labels)
                     
                     if validity_value > max_validity_value:
                         max_validity_value = validity_value

@@ -200,6 +200,7 @@ cython_debug/
 *.json
 *.zip
 *.gzip
+*.npy
 # R
 
 *.Rhistory
