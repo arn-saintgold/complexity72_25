@@ -40,7 +40,10 @@ def search_params(embeddings):
                 n_jobs=-1,                  # TODO Comment away later for reproducibility
                 #random_state=1138341792,   # TODO Uncomment later for reproducibility
             )
+            print(f"REDUCING EMBEDDINGS")
             reduced_embeddings = umap_model.fit_transform(embeddings)
+            validities = []
+            print(f"CLUSTERING WITH {n_components=}, {n_neighbors=}")
             for min_cluster_size in [50, 100, 150, 200]:
                 for cluster_selection_method in ["eom", "leaf"]:
                     print(f"{min_cluster_size=}, {cluster_selection_method=}")
@@ -51,8 +54,8 @@ def search_params(embeddings):
                         n_jobs = -1,
                     )
                     labels = hdbscan_model.fit_predict(reduced_embeddings)
-                    validity_value = validity_index(reduced_embeddings, labels)
-                    
+                    validity_value = validity_index(reduced_embeddings.astype(np.float64), labels)
+                    validities.append(validity_value)
                     if validity_value > max_validity_value:
                         max_validity_value = validity_value
                         best_params = (
@@ -61,6 +64,7 @@ def search_params(embeddings):
                             min_cluster_size,
                             cluster_selection_method,
                         )
+            print(f"{validities=}")
     print(
         f"Best parameters: n_neighbors={best_params[0]}, n_components={best_params[1]}, min_cluster_size={best_params[2]}, cluster_selection_method={best_params[3]}, max_validity_value={max_validity_value}"
     )
