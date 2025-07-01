@@ -1,58 +1,33 @@
 # Script that takes a filename, a column name, and optional column names as parameters,
 # and performs topic modeling on the text data in the file.
 # The optional columns are used for temporal or categorical analysis.
-
+# The script exploits hdbscan's validity index function for validation.
+#
+# Validity Index references:
+# Moulavi, D., Jaskowiak, P.A., Campello, R.J., Zimek, A. and Sander, J.,
+# 2014. Density-Based Clustering Validation. In SDM (pp. 839-847).
+#
+#  
 import os
 import argparse
 import pandas as pd
 import numpy as np
 from umap import UMAP
 from sklearn.decomposition import PCA
-from hdbscan import HDBSCAN
+#from hdbscan import HDBSCAN
+from sklearn.cluster import HDBSCAN
 from sklearn.feature_extraction.text import CountVectorizer
 from bertopic.vectorizers import ClassTfidfTransformer
 from bertopic import BERTopic
 from sentence_transformers import SentenceTransformer
-
+from hdbscan import validity_index
 DEBUG = False
 DEVICE = 'cpu'
 
 def search_params(embeddings):
     global DEBUG
     print("Starting Parameter selection")
-    if DEBUG:
-        max_relative_validity = 0
-        best_params = None
-        for n_components in [5, 20, 50]:
-            print(f"{n_components=}")
-            umap_model = PCA(n_components)
-            reduced_embeddings = umap_model.fit_transform(embeddings)
-            for min_cluster_size in [15, 50, 100, 200]:
-                for cluster_selection_method in ["eom", "leaf"]:
-                    print(f"{min_cluster_size=}, {cluster_selection_method=}")
-                    hdbscan_model = HDBSCAN(
-                        min_cluster_size=min_cluster_size,
-                        metric="euclidean",
-                        cluster_selection_method=cluster_selection_method,
-                        prediction_data=True,
-                        gen_min_span_tree=True,
-                    )
-                    relative_validity = hdbscan_model.fit(
-                        reduced_embeddings
-                    ).relative_validity_
-                    if relative_validity > max_relative_validity:
-                        max_relative_validity = relative_validity
-                        best_params = (
-                            None,
-                            n_components,
-                            min_cluster_size,
-                            cluster_selection_method,
-                        )
-        print(
-            f"Best parameters: n_components={best_params[1]}, min_cluster_size={best_params[2]}, cluster_selection_method={best_params[3]}, max_relative_validity={max_relative_validity}"
-        )
-        return best_params
-    max_relative_validity = 0
+    max_validity_value = -float("Inf")
     best_params = None
     for n_neighbors in [15, 50]:
         for n_components in [5, 20, 50]:
@@ -62,23 +37,24 @@ def search_params(embeddings):
                 n_components=n_components,
                 min_dist=0.0,
                 metric="cosine",
+                n_jobs=-1,                  # TODO Comment away later for reproducibility
+                #random_state=1138341792,   # TODO Uncomment later for reproducibility
             )
             reduced_embeddings = umap_model.fit_transform(embeddings)
-            for min_cluster_size in [15, 50, 100, 200]:
+            for min_cluster_size in [50, 100, 150, 200]:
                 for cluster_selection_method in ["eom", "leaf"]:
                     print(f"{min_cluster_size=}, {cluster_selection_method=}")
                     hdbscan_model = HDBSCAN(
                         min_cluster_size=min_cluster_size,
-                        metric="euclidean",
                         cluster_selection_method=cluster_selection_method,
-                        prediction_data=True,
-                        gen_min_span_tree=True,
+                        metric="euclidean",
+                        n_jobs = -1,
                     )
-                    relative_validity = hdbscan_model.fit(
-                        reduced_embeddings
-                    ).relative_validity_
-                    if relative_validity > max_relative_validity:
-                        max_relative_validity = relative_validity
+                    labels = hdbscan_model.fit_predict(reduced_embeddings)
+                    validity_value = validity_index(reduced_embeddings, labels)
+                    
+                    if validity_value > max_validity_value:
+                        max_validity_value = validity_value
                         best_params = (
                             n_neighbors,
                             n_components,
@@ -86,7 +62,7 @@ def search_params(embeddings):
                             cluster_selection_method,
                         )
     print(
-        f"Best parameters: n_neighbors={best_params[0]}, n_components={best_params[1]}, min_cluster_size={best_params[2]}, cluster_selection_method={best_params[3]}, max_relative_validity={max_relative_validity}"
+        f"Best parameters: n_neighbors={best_params[0]}, n_components={best_params[1]}, min_cluster_size={best_params[2]}, cluster_selection_method={best_params[3]}, max_validity_value={max_validity_value}"
     )
     return best_params
 
@@ -151,25 +127,24 @@ def topic_modeling(
     
     # Search for the best parameters for UMAP and HDBSCAN
     if not DEBUG:
-        best_params = search_params(embeddings)
-        umap_model = UMAP(
-            n_neighbors=best_params[0],
-            n_components=best_params[1],
-            min_dist=0.0,
-            metric="cosine",
-            low_memory=True,
-        )
+        best_params = search_params(unique_embeddings)
     else:
-        best_params = search_params(embeddings)
-        umap_model = PCA(best_params[1])
+        best_params = [15,5,15,'eom']
+    umap_model = UMAP(
+        n_neighbors=best_params[0],
+        n_components=best_params[1],
+        min_dist=0.0,
+        metric="cosine",
+        low_memory=True,
+        n_jobs=-1,                  # TODO Comment away later for reproducibility
+        #random_state=1138341792,   # TODO Uncomment later for reproducibility
+    )
     hdbscan_model = HDBSCAN(
         min_cluster_size=best_params[2],
         metric="euclidean",
         cluster_selection_method=best_params[3],
-        prediction_data=True,
-        gen_min_span_tree=True,
+        n_jobs = -1        
     )
-    # HDBSCAN(min_cluster_size=min_cluster_size, metric='euclidean', cluster_selection_method=cluster_selection_method, prediction_data=True, gen_min_span_tree=True)
 
     # Create a BERTopic model
     topic_model = BERTopic(

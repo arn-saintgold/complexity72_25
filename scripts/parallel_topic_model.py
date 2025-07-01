@@ -16,7 +16,7 @@ import argparse
 import pandas as pd
 import numpy as np
 from umap import UMAP
-from sklearn.decomposition import PCA
+#from sklearn.decomposition import PCA
 from fast_hdbscan import HDBSCAN
 from hdbscan import validity_index
 from sklearn.feature_extraction.text import CountVectorizer
@@ -40,7 +40,8 @@ def search_params(embeddings):
                 n_components=n_components,
                 min_dist=0.0,
                 metric="cosine",
-                n_jobs=-1,
+                n_jobs=-1,                  # TODO Comment away later for reproducibility
+                #random_state=1138341792,   # TODO Uncomment later for reproducibility
             )
             reduced_embeddings = umap_model.fit_transform(embeddings)
             for min_cluster_size in [50, 100, 150, 200]:
