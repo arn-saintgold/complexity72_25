@@ -12,6 +12,7 @@
 # https://github.com/TutteInstitute/fast_hdbscan
 
 import os
+import time
 import argparse
 import pandas as pd
 import numpy as np
@@ -32,8 +33,9 @@ def search_params(embeddings):
     print("Starting Parameter selection")
     max_validity_value = -float("Inf")
     best_params = None
-    for n_neighbors in [15, 50]:
-        for n_components in [5, 20, 50]:
+
+    for n_neighbors in [15]:#, 50]:
+        for n_components in [5]:#, 20, 50]:
             print(f"{n_components=}, {n_neighbors=}")
             umap_model = UMAP(
                 n_neighbors=n_neighbors,
@@ -43,18 +45,29 @@ def search_params(embeddings):
                 n_jobs=-1,                  # TODO Comment away later for reproducibility
                 #random_state=1138341792,   # TODO Uncomment later for reproducibility
             )
+            print("REDUCING EMBEDDINGS")
+            t0 = time.time()
             reduced_embeddings = umap_model.fit_transform(embeddings)
-            for min_cluster_size in [50, 100, 150, 200]:
+            t1 = time.time()
+            print(f"EMBEDDING REDUCED IN {round(t1-t0,1)} SECONDS")
+            for min_cluster_size in [100, 150, 200, 500]:
                 for cluster_selection_method in ["eom", "leaf"]:
-                    print(f"{min_cluster_size=}, {cluster_selection_method=}")
+                    print(f"CLUSTERING WITH PARAMETERS: {min_cluster_size=}, {cluster_selection_method=}")
                     hdbscan_model = HDBSCAN(
                         min_cluster_size=min_cluster_size,
                         cluster_selection_method=cluster_selection_method,
                         metric="euclidean",
                     )
+                    t0 = time.time()
                     labels = hdbscan_model.fit_predict(reduced_embeddings)
+                    t1 = time.time()
                     validity_value = validity_index(reduced_embeddings.astype(np.float64), labels)
-                    
+                    t2 = time.time()
+                    print(f"CLUSTERING FINISHED IN {round(t1-t0,1)} SECONDS")
+                    print(f"VALIDATION FINISHED IN {round(t2-t1,1)} SECONDS")
+                    print(f"BOTH FINISHED IN {round(t2-t0,1)} SECONDS")
+                    print(f"VALIDITY INDEX: {validity_index}")
+
                     if validity_value > max_validity_value:
                         max_validity_value = validity_value
                         best_params = (
@@ -83,28 +96,14 @@ def clean_dataframe(df, embeddings, col_name):
 def topic_modeling(
     filename, text_column, embedding_model_name="all-MiniLM-L6-v2", *args, **kwargs
 ):
+    # TODO If UMAP parameters are fixed, compute embeddints right away.
+
     global DEBUG
-    # Load the data
-    if filename.endswith(".parquet"):
-        df = clean_dataframe(pd.read_parquet(filename), text_column)
-    elif filename.endswith("csv"):
-        df = clean_dataframe(pd.read_csv(filename), text_column)
-    else:
-        raise ValueError("Extension not recognized")
-    # Take subset of data
-
-
     global DEVICE
-    # embedding_model
+
+    # Load Precomputed embeddings and transformer model
     embedding_model = SentenceTransformer("all-MiniLM-L6-v2", device=DEVICE)
-
-    # Check if the specified text column exists
-    if text_column not in df.columns:
-        raise ValueError(f"Column '{text_column}' does not exist in the DataFrame.")
-
     actual_filename = filename.split('/')[-1]
-    # Extract the text data
-    texts = df[text_column].astype(str).tolist()
     embedding_path = os.path.join('data','processed',actual_filename+'.npy')
     print(f"getting embeddings from {embedding_path}")
     embeddings = (
@@ -117,6 +116,24 @@ def topic_modeling(
         embeddings = embedding_model.encode(texts)
     else:
         print("PRECOMPUTED EMBEDDINGS FOUND")
+    
+    # Load the data
+    if filename.endswith(".parquet"):
+        df = pd.read_parquet(filename)
+    elif filename.endswith("csv"):
+        df = pd.read_csv(filename)
+    else:
+        raise ValueError("Extension not recognized")
+    # ? Take subset of data
+    # ? Removed for actual analysis
+
+    # Check if the specified text column exists
+    if text_column not in df.columns:
+        raise ValueError(f"Column '{text_column}' does not exist in the DataFrame.")
+    
+    # TODO Remove old code
+    # Extract the text data
+    # texts = df[text_column].astype(str).tolist()
 
     # Choose unique texts and embeddings
     unique_texts, unique_embeddings = clean_dataframe(df, embeddings, text_column)
@@ -163,13 +180,15 @@ def topic_modeling(
     # Fit the model to the texts
     topics, _ = topic_model.fit_transform(unique_texts, embeddings=unique_embeddings)
 
+    # TODO add final topics' validity index
+
     # Save the model
     model_filename = filename.split("/")[-1] + ".topic_model"
     model_path = os.path.join("models", model_filename.split()[-1])
     topic_model.save(model_path, serialization="safetensors")
     print(f"Topic model saved to {model_filename}.")
 
-    # TODO return dataset with topics
+    # Return dataset with topics
     return topic_model.get_topic_info(), topic_model.get_document_info(unique_texts)
 
 # ? Was needed for dynamic topic modeling
