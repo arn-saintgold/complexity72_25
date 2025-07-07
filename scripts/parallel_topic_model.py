@@ -12,12 +12,15 @@
 # https://github.com/TutteInstitute/fast_hdbscan
 
 import os
+from bertopic import __version__ as bertopic_version
+from sys import version as python_version
 import time
 import argparse
 import pandas as pd
 import numpy as np
 from umap import UMAP
 #from sklearn.decomposition import PCA
+from bertopic.dimensionality import BaseDimensionalityReduction as umap_was_precomputed
 from fast_hdbscan import HDBSCAN
 from hdbscan import validity_index
 from sklearn.feature_extraction.text import CountVectorizer
@@ -27,6 +30,8 @@ from sentence_transformers import SentenceTransformer
 
 DEBUG = False
 DEVICE = 'cpu'
+# Try different random seeds
+RANDOM_SEEDS = [301829105, 1928485189, 3147098556, 3424474279, 1458613529, 3342915517, 1825182901, 1648132992, 3153722039, 1532039811]
 
 def search_params(embeddings):
     global DEBUG
@@ -37,20 +42,22 @@ def search_params(embeddings):
     for n_neighbors in [15]:#, 50]:
         for n_components in [5]:#, 20, 50]:
             print(f"{n_components=}, {n_neighbors=}")
-            umap_model = UMAP(
+            t0 = time.time()
+            #reduced_embeddings = umap_model.fit_transform(embeddings)
+            
+            many_umaps = [UMAP(
                 n_neighbors=n_neighbors,
                 n_components=n_components,
                 min_dist=0.0,
                 metric="cosine",
-                n_jobs=-1,                  # TODO Comment away later for reproducibility
-                #random_state=1138341792,   # TODO Uncomment later for reproducibility
-            )
-            print("REDUCING EMBEDDINGS")
-            t0 = time.time()
-            reduced_embeddings = umap_model.fit_transform(embeddings)
+                random_state= random_state 
+            ) for random_state in RANDOM_SEEDS]
+
+            many_reduced_embeddings = [ this_umap.fit_transform(embeddings) for this_umap in many_umaps ]
+    
             t1 = time.time()
             print(f"EMBEDDING REDUCED IN {round(t1-t0,1)} SECONDS")
-            for min_cluster_size in [100, 150, 200, 500]:
+            for min_cluster_size in np.linspace(100,1000,19).astype(int): # search 100, 150, 200, ..., 1000
                 for cluster_selection_method in ["eom", "leaf"]:
                     print(f"CLUSTERING WITH PARAMETERS: {min_cluster_size=}, {cluster_selection_method=}")
                     hdbscan_model = HDBSCAN(
@@ -59,9 +66,12 @@ def search_params(embeddings):
                         metric="euclidean",
                     )
                     t0 = time.time()
-                    labels = hdbscan_model.fit_predict(reduced_embeddings)
+                    many_labels = [hdbscan_model.fit_predict(reduced_embeddings) for reduced_embeddings in many_reduced_embeddings]
+                    #labels = hdbscan_model.fit_predict(reduced_embeddings)
                     t1 = time.time()
-                    validity_value = validity_index(reduced_embeddings.astype(np.float64), labels)
+                    #validity_value = validity_index(reduced_embeddings.astype(np.float64), labels)
+                    many_validity_values = np.array([validity_index(reduced_embeddings.astype(np.float64), labels) for (reduced_embeddings, labels) in zip(many_reduced_embeddings, many_labels)])
+                    validity_value = np.mean(many_validity_values)
                     t2 = time.time()
                     print(f"CLUSTERING FINISHED IN {round(t1-t0,1)} SECONDS")
                     print(f"VALIDATION FINISHED IN {round(t2-t1,1)} SECONDS")
@@ -69,15 +79,17 @@ def search_params(embeddings):
                     print(f"VALIDITY INDEX: {validity_index}")
 
                     if validity_value > max_validity_value:
+                        best_RAND = RANDOM_SEEDS[many_validity_values.argmax()] # Random seed of the embedding with the best value among those with highest average validity value
                         max_validity_value = validity_value
                         best_params = (
                             n_neighbors,
                             n_components,
                             min_cluster_size,
                             cluster_selection_method,
+                            best_RAND
                         )
     print(
-        f"Best parameters: n_neighbors={best_params[0]}, n_components={best_params[1]}, min_cluster_size={best_params[2]}, cluster_selection_method={best_params[3]}, max_validity_value={max_validity_value}"
+        f"Best parameters: n_neighbors={best_params[0]}, n_components={best_params[1]}, min_cluster_size={best_params[2]}, cluster_selection_method={best_params[3]}, best_avg_validity_value={max_validity_value}"
     )
     return best_params
 
@@ -113,7 +125,7 @@ def topic_modeling(
     )
     if embeddings is None:
         raise ValueError("EMBEDDINGS NOT FOUND")  # print('ENCODING TEXT')
-        embeddings = embedding_model.encode(texts)
+        #embeddings = embedding_model.encode(texts)
     else:
         print("PRECOMPUTED EMBEDDINGS FOUND")
     
@@ -147,13 +159,14 @@ def topic_modeling(
         best_params = search_params(unique_embeddings)
         
     else:
-        best_params = [15,5,15,'eom']#search_params(unique_embeddings)
+        best_params = [50,5,15,'eom', 0]#search_params(unique_embeddings)
     umap_model = UMAP(
         n_neighbors=best_params[0],
         n_components=best_params[1],
         min_dist=0.0,
         metric="cosine",
-        n_jobs = -1,
+        #n_jobs = -1,
+        random_state = best_params[-1]
     )
     hdbscan_model = HDBSCAN(
         min_cluster_size=best_params[2],
@@ -164,7 +177,7 @@ def topic_modeling(
     # Create a BERTopic model
     topic_model = BERTopic(
         embedding_model=embedding_model,
-        umap_model=umap_model,
+        umap_model=umap_was_precomputed,
         hdbscan_model=hdbscan_model,
         vectorizer_model=CountVectorizer(ngram_range=(1, 2), stop_words="english"),
         ctfidf_model=ClassTfidfTransformer(),
@@ -174,13 +187,21 @@ def topic_modeling(
         language="english",
     )
 
-    # topic_model = BERTopic(vectorizer_model=ClassTfidfTransformer(), umap_model=umap_model, hdbscan_model=hdbscan_model,
-    #                       calculate_probabilities=True, verbose=True)
+    reduced_embeddings = umap_model.fit_transform(unique_embeddings)
 
     # Fit the model to the texts
-    topics, _ = topic_model.fit_transform(unique_texts, embeddings=unique_embeddings)
-
+    topics, _ = topic_model.fit_transform(unique_texts, embeddings=reduced_embeddings)
+    
     # TODO add final topics' validity index
+
+    validity_value = validity_index(reduced_embeddings.astype(np.float64), topics)
+
+    model_info = f'{python_version = }\n{bertopic_version = }\nVALIDITY INDEX: {validity_value}\nUMAP Seed: {RANDOM_SEEDS[best_params[-1]]}\nUMAP parameters: n_neighbours = {best_params[0]}, n_components = {best_params[1]}\nHDBSCAN parameters: min cluster size = {best_params[2]}, cluster selection method = {best_params[3]}.'
+    
+    with open(os.path.join('.','models',actual_filename+"_model_info.txt"), 'wb') as handle:
+        handle.write(model_info)
+
+    print(f'VALIDITY INDEX: {validity_value}')
 
     # Save the model
     model_filename = filename.split("/")[-1] + ".topic_model"
@@ -188,6 +209,7 @@ def topic_modeling(
     topic_model.save(model_path, serialization="safetensors")
     print(f"Topic model saved to {model_filename}.")
 
+    
     # Return dataset with topics
     return topic_model.get_topic_info(), topic_model.get_document_info(unique_texts)
 
@@ -251,6 +273,7 @@ def main():
         )
         + ".csv"
     )
+
 
 
 if __name__ == "__main__":
