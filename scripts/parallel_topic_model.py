@@ -31,6 +31,9 @@ from sentence_transformers import SentenceTransformer
 DEBUG = False
 DEVICE = 'cpu'
 # Try different random seeds
+# Result of [random.randint(0,2**32-1) for _ in range(10)]
+# Needed to take into account UMAP multithreading stochastic behaviour and race conditions.
+# May take a lot of time
 RANDOM_SEEDS = [301829105, 1928485189, 3147098556, 3424474279, 1458613529, 3342915517, 1825182901, 1648132992, 3153722039, 1532039811]
 
 def search_params(embeddings):
