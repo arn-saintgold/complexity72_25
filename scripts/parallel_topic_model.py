@@ -54,30 +54,41 @@ DEVICE = 'cpu'
 # Needed to take into account UMAP multithreading stochastic behaviour and race conditions.
 # May take a lot of time
 #RANDOM_SEEDS = [301829105, 1928485189, 3147098556, 3424474279, 1458613529, 3342915517, 1825182901, 1648132992, 3153722039, 1532039811]
-RANDOM_SEEDS = [random.randint(0,2**32-1) for _ in range(10)]
+RANDOM_SEEDS = [random.randint(0,2**32-1) for _ in range(5)]
 logger.info(f'{RANDOM_SEEDS = }')
 
 def search_params(embeddings):
     global DEBUGGING
+    global RANDOM_SEEDS
     logger.info("Starting Parameter selection")
     max_validity_value = -float("Inf")
     best_params = None
 
-    for n_neighbors in [15]:#, 50]:
+    for n_neighbors in [50]:
         for n_components in [5]:#, 20, 50]:
             logger.info(f"{n_components=}, {n_neighbors=}")
             t0 = time.time()
             #reduced_embeddings = umap_model.fit_transform(embeddings)
             
-            many_umaps = [UMAP(
+            #many_umaps = [UMAP(
+            #    n_neighbors=n_neighbors,
+            #    n_components=n_components,
+            #    min_dist=0.0,
+            #    metric="cosine",
+            #    #random_state= random_state #! No random seed search on parameter search, just average the values. Search later for random seed.
+            #    n_jobs=-1
+            #) for random_state in RANDOM_SEEDS]
+            
+            umap_model = UMAP(
                 n_neighbors=n_neighbors,
                 n_components=n_components,
                 min_dist=0.0,
                 metric="cosine",
-                random_state= random_state 
-            ) for random_state in RANDOM_SEEDS]
-
-            many_reduced_embeddings = [ this_umap.fit_transform(embeddings) for this_umap in many_umaps ]
+                n_jobs=-1
+            )
+            #! No random seed search on parameter search, just average the values. Search later for random seed.
+            #many_reduced_embeddings = [ this_umap.fit_transform(embeddings) for this_umap in many_umaps ]
+            many_reduced_embeddings = [umap_model.fit_transform(embeddings) for _ in RANDOM_SEEDS]
     
             t1 = time.time()
             logger.info(f"EMBEDDING REDUCED IN {round(t1-t0,1)} SECONDS")
@@ -103,7 +114,7 @@ def search_params(embeddings):
                     logger.info(f"VALIDITY INDEX: {validity_value}")
 
                     if validity_value > max_validity_value:
-                        best_RAND = RANDOM_SEEDS[many_validity_values.argmax()] # Random seed of the embedding with the best value among those with highest average validity value
+                        best_RAND = None#RANDOM_SEEDS[many_validity_values.argmax()] # Random seed of the embedding with the best value among those with highest average validity value
                         max_validity_value = validity_value
                         best_params = (
                             n_neighbors,
@@ -112,6 +123,27 @@ def search_params(embeddings):
                             cluster_selection_method,
                             best_RAND
                         )
+    logger.info(f"SEARCHING RANDOM SEED IN {RANDOM_SEEDS}")
+    # computing many umap reductions
+    many_umaps = [UMAP(
+                n_neighbors=best_params[0],
+                n_components=best_params[1],
+                min_dist=0.0,
+                metric="cosine",
+                random_state= random_state
+            ) for random_state in RANDOM_SEEDS]
+    hdbscan_model = HDBSCAN(
+        min_cluster_size=best_params[2],
+        cluster_selection_method=best_params[3],
+        metric="euclidean",
+    )
+
+    many_reduced_embeddings = [ this_umap.fit_transform(embeddings) for this_umap in many_umaps ]
+    many_labels = [hdbscan_model.fit_predict(reduced_embeddings) for reduced_embeddings in many_reduced_embeddings]
+    many_validity_values = np.array([validity_index(reduced_embeddings.astype(np.float64), labels) for (reduced_embeddings, labels) in zip(many_reduced_embeddings, many_labels)])
+    # picking random seed with best performance
+    best_RAND = RANDOM_SEEDS[many_validity_values.argmax()] # Random seed of the embedding with the best value among those with highest average validity value
+    best_params[-1] = best_RAND
     logger.info(
         f"Best parameters: n_neighbors={best_params[0]}, n_components={best_params[1]}, min_cluster_size={best_params[2]}, cluster_selection_method={best_params[3]}, best_avg_validity_value={max_validity_value}, best seed={best_RAND}"
     )
@@ -120,6 +152,7 @@ def search_params(embeddings):
 
 def clean_dataframe(df:pd.DataFrame, embeddings:np.array, col_name:str):
 
+    # mask retweets, keep one example
     unique_mask = df.duplicated(col_name, keep='first')
     unique_rows = df[unique_mask]
     unique_texts = unique_rows[col_name]
@@ -180,6 +213,8 @@ def topic_modeling(
         
     else:
         best_params = [50,5,200,'eom', 0]#search_params(unique_embeddings)
+
+    
     umap_model = UMAP(
         n_neighbors=best_params[0],
         n_components=best_params[1],
