@@ -118,14 +118,14 @@ def search_params(embeddings):
     return best_params
 
 
-def clean_dataframe(df, embeddings, col_name):
+def clean_dataframe(df:pd.DataFrame, embeddings:np.array, col_name:str):
 
-    unique_mask = df[col_name].map(df[col_name].value_counts()) == 1
+    unique_mask = df.duplicated(col_name, keep='first')
     unique_rows = df[unique_mask]
     unique_texts = unique_rows[col_name]
     
     # Select corresponding rows from the embeddings array
-    unique_embeddings = embeddings[unique_mask.to_numpy()]
+    unique_embeddings = embeddings[unique_mask]
     return unique_texts, unique_embeddings
 
 
