@@ -3,11 +3,11 @@
 # The optional columns are used for temporal or categorical analysis.
 # It uses fast_hdbscan for a fully parallelized hdbscan implementation
 #  and hdbscan's validity index function for parameter selection.
-# 
+#
 # Validity Index references:
 # Moulavi, D., Jaskowiak, P.A., Campello, R.J., Zimek, A. and Sander, J.,
 # 2014. Density-Based Clustering Validation. In SDM (pp. 839-847).
-# 
+#
 # fast_hdbscan github:
 # https://github.com/TutteInstitute/fast_hdbscan
 
@@ -21,7 +21,8 @@ import argparse
 import pandas as pd
 import numpy as np
 from umap import UMAP
-#from sklearn.decomposition import PCA
+
+# from sklearn.decomposition import PCA
 from bertopic.dimensionality import BaseDimensionalityReduction as umap_was_precomputed
 from fast_hdbscan import HDBSCAN
 from hdbscan import validity_index
@@ -33,29 +34,30 @@ from sentence_transformers import SentenceTransformer
 
 logging.basicConfig(
     level=logging.DEBUG,  # or DEBUG, WARNING, etc.
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
-numba_logger = logging.getLogger('numba')
+numba_logger = logging.getLogger("numba")
 numba_logger.setLevel(logging.WARNING)
-bertopic_logger = logging.getLogger('bertopic')
+bertopic_logger = logging.getLogger("bertopic")
 bertopic_logger.setLevel(logging.WARNING)
-sentence_transformers_logger = logging.getLogger('sentence_transformers')
+sentence_transformers_logger = logging.getLogger("sentence_transformers")
 sentence_transformers_logger.setLevel(logging.WARNING)
-transformers_logger = logging.getLogger('transformers')
+transformers_logger = logging.getLogger("transformers")
 transformers_logger.setLevel(logging.WARNING)
 
-DEBUGGING = False # if True, skips parameter search and performs multithreaded umap
-DEVICE = 'cpu'
+DEBUGGING = False  # if True, skips parameter search and performs multithreaded umap
+DEVICE = "cpu"
 
 # Try different random seeds
 # Result of [random.randint(0,2**32-1) for _ in range(10)]
 # Needed to take into account UMAP multithreading stochastic behaviour and race conditions.
 # May take a lot of time
-#RANDOM_SEEDS = [301829105, 1928485189, 3147098556, 3424474279, 1458613529, 3342915517, 1825182901, 1648132992, 3153722039, 1532039811]
-RANDOM_SEEDS = [random.randint(0,2**32-1) for _ in range(5)]
-logger.info(f'{RANDOM_SEEDS = }')
+# RANDOM_SEEDS = [301829105, 1928485189, 3147098556, 3424474279, 1458613529, 3342915517, 1825182901, 1648132992, 3153722039, 1532039811]
+RANDOM_SEEDS = [random.randint(0, 2**32 - 1) for _ in range(5)]
+logger.info(f"{RANDOM_SEEDS = }")
+
 
 def search_params(embeddings):
     global DEBUGGING
@@ -65,89 +67,119 @@ def search_params(embeddings):
     best_params = None
 
     for n_neighbors in [15]:
-        for n_components in [5]:#, 20, 50]:
+        for n_components in [5]:  # , 20, 50]:
             logger.info(f"{n_components=}, {n_neighbors=}")
             t0 = time.time()
-            #reduced_embeddings = umap_model.fit_transform(embeddings)
-            
-            #many_umaps = [UMAP(
+            # reduced_embeddings = umap_model.fit_transform(embeddings)
+
+            # many_umaps = [UMAP(
             #    n_neighbors=n_neighbors,
             #    n_components=n_components,
             #    min_dist=0.0,
             #    metric="cosine",
             #    #random_state= random_state #! No random seed search on parameter search, just average the values. Search later for random seed.
             #    n_jobs=-1
-            #) for random_state in RANDOM_SEEDS]
-            
+            # ) for random_state in RANDOM_SEEDS]
+
             umap_model = UMAP(
                 n_neighbors=n_neighbors,
                 n_components=n_components,
                 min_dist=0.0,
                 metric="cosine",
-                n_jobs=-1
+                n_jobs=-1,
             )
             #! No random seed search on parameter search, just average the values. Search later for random seed.
-            #many_reduced_embeddings = [ this_umap.fit_transform(embeddings) for this_umap in many_umaps ]
-            many_reduced_embeddings = [umap_model.fit_transform(embeddings) for _ in RANDOM_SEEDS]
-    
+            # many_reduced_embeddings = [ this_umap.fit_transform(embeddings) for this_umap in many_umaps ]
+            many_reduced_embeddings = [
+                umap_model.fit_transform(embeddings) for _ in RANDOM_SEEDS
+            ]
+
             t1 = time.time()
-            logger.info(f"EMBEDDING REDUCED IN {round(t1-t0,1)} SECONDS")
-            for min_cluster_size in np.linspace(200,2000,10).astype(int): # search 200, 400, ..., 2000
+            logger.info(f"EMBEDDING REDUCED IN {round(t1 - t0, 1)} SECONDS")
+            for min_cluster_size in np.linspace(200, 2000, 10).astype(
+                int
+            ):  # search 200, 400, ..., 2000
                 for cluster_selection_method in ["eom", "leaf"]:
-                    logger.info(f"CLUSTERING WITH PARAMETERS: {min_cluster_size=}, {cluster_selection_method=}")
+                    logger.info(
+                        f"CLUSTERING WITH PARAMETERS: {min_cluster_size=}, {cluster_selection_method=}"
+                    )
                     hdbscan_model = HDBSCAN(
                         min_cluster_size=min_cluster_size,
                         cluster_selection_method=cluster_selection_method,
                         metric="euclidean",
                     )
                     t0 = time.time()
-                    many_labels = [hdbscan_model.fit_predict(reduced_embeddings) for reduced_embeddings in many_reduced_embeddings]
-                    #labels = hdbscan_model.fit_predict(reduced_embeddings)
+                    many_labels = [
+                        hdbscan_model.fit_predict(reduced_embeddings)
+                        for reduced_embeddings in many_reduced_embeddings
+                    ]
+                    # labels = hdbscan_model.fit_predict(reduced_embeddings)
                     t1 = time.time()
-                    logger.info(f"CLUSTERING FINISHED IN {round(t1-t0,1)} SECONDS")
+                    logger.info(f"CLUSTERING FINISHED IN {round(t1 - t0, 1)} SECONDS")
                     logger.info(f"STARTING VALIDATION")
-                    #validity_value = validity_index(reduced_embeddings.astype(np.float64), labels)
+                    # validity_value = validity_index(reduced_embeddings.astype(np.float64), labels)
                     many_validity_values = []
-                    for reduced_embeddings, labels in zip(many_reduced_embeddings, many_labels):
-                        this_validity = validity_index(reduced_embeddings.astype(np.float64), labels)
+                    for reduced_embeddings, labels in zip(
+                        many_reduced_embeddings, many_labels
+                    ):
+                        this_validity = validity_index(
+                            reduced_embeddings.astype(np.float64), labels
+                        )
                         many_validity_values.append(this_validity)
                     many_validity_values = np.array(many_validity_values)
                     validity_value = np.mean(many_validity_values)
                     t2 = time.time()
-                    logger.info(f"VALIDATION FINISHED IN {round(t2-t1,1)} SECONDS")
-                    logger.info(f"BOTH FINISHED IN {round(t2-t0,1)} SECONDS")
+                    logger.info(f"VALIDATION FINISHED IN {round(t2 - t1, 1)} SECONDS")
+                    logger.info(f"BOTH FINISHED IN {round(t2 - t0, 1)} SECONDS")
                     logger.info(f"VALIDITY INDEX: {validity_value}")
 
                     if validity_value > max_validity_value:
-                        best_RAND = None#RANDOM_SEEDS[many_validity_values.argmax()] # Random seed of the embedding with the best value among those with highest average validity value
+                        best_RAND = None  # RANDOM_SEEDS[many_validity_values.argmax()] # Random seed of the embedding with the best value among those with highest average validity value
                         max_validity_value = validity_value
                         best_params = (
                             n_neighbors,
                             n_components,
                             min_cluster_size,
                             cluster_selection_method,
-                            best_RAND
+                            best_RAND,
                         )
     logger.info(f"SEARCHING RANDOM SEED IN {RANDOM_SEEDS}")
     # computing many umap reductions
-    many_umaps = [UMAP(
-                n_neighbors=best_params[0],
-                n_components=best_params[1],
-                min_dist=0.0,
-                metric="cosine",
-                random_state= random_state
-            ) for random_state in RANDOM_SEEDS]
+    many_umaps = [
+        UMAP(
+            n_neighbors=best_params[0],
+            n_components=best_params[1],
+            min_dist=0.0,
+            metric="cosine",
+            random_state=random_state,
+        )
+        for random_state in RANDOM_SEEDS
+    ]
     hdbscan_model = HDBSCAN(
         min_cluster_size=best_params[2],
         cluster_selection_method=best_params[3],
         metric="euclidean",
     )
 
-    many_reduced_embeddings = [ this_umap.fit_transform(embeddings) for this_umap in many_umaps ]
-    many_labels = [hdbscan_model.fit_predict(reduced_embeddings) for reduced_embeddings in many_reduced_embeddings]
-    many_validity_values = np.array([validity_index(reduced_embeddings.astype(np.float64), labels) for (reduced_embeddings, labels) in zip(many_reduced_embeddings, many_labels)])
+    many_reduced_embeddings = [
+        this_umap.fit_transform(embeddings) for this_umap in many_umaps
+    ]
+    many_labels = [
+        hdbscan_model.fit_predict(reduced_embeddings)
+        for reduced_embeddings in many_reduced_embeddings
+    ]
+    many_validity_values = np.array(
+        [
+            validity_index(reduced_embeddings.astype(np.float64), labels)
+            for (reduced_embeddings, labels) in zip(
+                many_reduced_embeddings, many_labels
+            )
+        ]
+    )
     # picking random seed with best performance
-    best_RAND = RANDOM_SEEDS[many_validity_values.argmax()] # Random seed of the embedding with the best value among those with highest average validity value
+    best_RAND = RANDOM_SEEDS[
+        many_validity_values.argmax()
+    ]  # Random seed of the embedding with the best value among those with highest average validity value
     best_params[-1] = best_RAND
     logger.info(
         f"Best parameters: n_neighbors={best_params[0]}, n_components={best_params[1]}, min_cluster_size={best_params[2]}, cluster_selection_method={best_params[3]}, best_avg_validity_value={max_validity_value}, best seed={best_RAND}"
@@ -155,13 +187,12 @@ def search_params(embeddings):
     return best_params
 
 
-def clean_dataframe(df:pd.DataFrame, embeddings:np.array, col_name:str):
-
+def clean_dataframe(df: pd.DataFrame, embeddings: np.array, col_name: str):
     # mask retweets, keep one example
-    unique_mask = ~df.duplicated(col_name, keep='first')
+    unique_mask = ~df.duplicated(col_name, keep="first")
     unique_rows = df[unique_mask]
     unique_texts = unique_rows[col_name]
-    
+
     # Select corresponding rows from the embeddings array
     unique_embeddings = embeddings[unique_mask]
     return unique_texts, unique_embeddings
@@ -177,8 +208,8 @@ def topic_modeling(
 
     # Load Precomputed embeddings and transformer model
     embedding_model = SentenceTransformer("all-MiniLM-L6-v2", device=DEVICE)
-    actual_filename = filename.split('/')[-1]
-    embedding_path = os.path.join('data','processed',actual_filename+'.npy')
+    actual_filename = filename.split("/")[-1]
+    embedding_path = os.path.join("data", "processed", actual_filename + ".npy")
     logger.info(f"getting embeddings from {embedding_path}")
     embeddings = (
         np.load(embedding_path)  # , allow_pickle=True).item()
@@ -187,10 +218,10 @@ def topic_modeling(
     )
     if embeddings is None:
         raise ValueError("EMBEDDINGS NOT FOUND")  # logger.info('ENCODING TEXT')
-        #embeddings = embedding_model.encode(texts)
+        # embeddings = embedding_model.encode(texts)
     else:
         logger.info("PRECOMPUTED EMBEDDINGS FOUND")
-    
+
     # Load the data
     if filename.endswith(".parquet"):
         df = pd.read_parquet(filename)
@@ -207,7 +238,7 @@ def topic_modeling(
 
     # Choose unique texts and embeddings
     unique_texts, unique_embeddings = clean_dataframe(df, embeddings, text_column)
-    
+
     # Free some spce
     embeddings = None
     df = None
@@ -215,25 +246,24 @@ def topic_modeling(
     # Search for the best parameters for UMAP and HDBSCAN
     if not DEBUGGING:
         best_params = search_params(unique_embeddings)
-        
-    else:
-        best_params = [50,5,200,'eom', 0]#search_params(unique_embeddings)
 
-    
+    else:
+        best_params = [50, 5, 200, "eom", 0]  # search_params(unique_embeddings)
+
     umap_model = UMAP(
         n_neighbors=best_params[0],
         n_components=best_params[1],
         min_dist=0.0,
         metric="cosine",
-        #n_jobs = -1,
-        random_state = best_params[-1]
+        # n_jobs = -1,
+        random_state=best_params[-1],
     )
     hdbscan_model = HDBSCAN(
         min_cluster_size=best_params[2],
         cluster_selection_method=best_params[3],
         metric="euclidean",
     )
-    
+
     # ensure code is tested FAST
     if DEBUGGING:
         umap_model.random_state = None
@@ -264,41 +294,43 @@ def topic_modeling(
         validity_value = validity_index(reduced_embeddings.astype(np.float64), topics)
     except AttributeError as e:
         logging.error(e)
-        logging.error('Converting topics to np.array')
-        validity_value = validity_index(reduced_embeddings.astype(np.float64), np.array(topics))
+        logging.error("Converting topics to np.array")
+        validity_value = validity_index(
+            reduced_embeddings.astype(np.float64), np.array(topics)
+        )
 
     topic_info = topic_model.get_topic_info()
     document_info = topic_model.get_document_info(unique_texts)
-    noise_percentage = len(document_info.query('Topic == -1')) / len(document_info)
+    noise_percentage = len(document_info.query("Topic == -1")) / len(document_info)
     n_topics = len(topic_info) - 1
-    model_info = f'{python_version = }\n{bertopic_version = }\nVALIDITY INDEX: {validity_value}\nUMAP Seed: {RANDOM_SEEDS[best_params[-1]]}\nUMAP parameters: n_neighbours = {best_params[0]}, n_components = {best_params[1]}\nHDBSCAN parameters: min cluster size = {best_params[2]}, cluster selection method = {best_params[3]}\nN TOPICS: {n_topics}\nNOISE PERCENTAGE: {noise_percentage}.'
-    logging.info('MODEL INFO:\n' + model_info)
-    model_info_path = os.path.join('.','models',actual_filename+"_model_info.txt")
-    logging.debug(f'MODEL INFO PATH: {model_info_path}')
-    with open(model_info_path, 'w') as handle:
+    model_info = f"{python_version = }\n{bertopic_version = }\nVALIDITY INDEX: {validity_value}\nUMAP Seed: {RANDOM_SEEDS[best_params[-1]]}\nUMAP parameters: n_neighbours = {best_params[0]}, n_components = {best_params[1]}\nHDBSCAN parameters: min cluster size = {best_params[2]}, cluster selection method = {best_params[3]}\nN TOPICS: {n_topics}\nNOISE PERCENTAGE: {noise_percentage}."
+    logging.info("MODEL INFO:\n" + model_info)
+    model_info_path = os.path.join(".", "models", actual_filename + "_model_info.txt")
+    logging.debug(f"MODEL INFO PATH: {model_info_path}")
+    with open(model_info_path, "w") as handle:
         handle.write(model_info)
 
-    logger.info(f'VALIDITY INDEX: {validity_value}')
+    logger.info(f"VALIDITY INDEX: {validity_value}")
 
     # Save the model
     model_filename = filename.split("/")[-1] + ".topic_model"
     model_path = os.path.join("models", model_filename.split()[-1])
-    logger.debug(f'MODEL PATH: {model_path}')
+    logger.debug(f"MODEL PATH: {model_path}")
     topic_model.save(model_path, serialization="safetensors")
     logger.info(f"Topic model saved as {model_filename}.")
 
-
     # Return dataset with topics
     return topic_model.get_topic_info(), topic_model.get_document_info(unique_texts)
+
 
 # ? Was needed for dynamic topic modeling
 # ? Not needed anymore
 # ? def count_months_passed(df, col_name):
 # ?     df[col_name] = pd.to_datetime(df[col_name])
-# ? 
+# ?
 # ?     min_date = df[col_name].min()
 # ?     max_date = df[col_name].max()
-# ? 
+# ?
 # ?     # Calculate months difference
 # ?     months_passed = (max_date.year - min_date.year) * 12 + (
 # ?         max_date.month - min_date.month
@@ -352,7 +384,6 @@ def main():
         )
         + ".csv"
     )
-
 
 
 if __name__ == "__main__":
