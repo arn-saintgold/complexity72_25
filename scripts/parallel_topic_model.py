@@ -60,11 +60,11 @@ logger.info(f'{RANDOM_SEEDS = }')
 def search_params(embeddings):
     global DEBUGGING
     global RANDOM_SEEDS
-    logger.info("Starting Parameter selection")
+    logger.info("STARTING PARAMETER SELECTION")
     max_validity_value = -float("Inf")
     best_params = None
 
-    for n_neighbors in [50]:
+    for n_neighbors in [15]:
         for n_components in [5]:#, 20, 50]:
             logger.info(f"{n_components=}, {n_neighbors=}")
             t0 = time.time()
@@ -105,8 +105,13 @@ def search_params(embeddings):
                     #labels = hdbscan_model.fit_predict(reduced_embeddings)
                     t1 = time.time()
                     logger.info(f"CLUSTERING FINISHED IN {round(t1-t0,1)} SECONDS")
+                    logger.info(f"STARTING VALIDATION")
                     #validity_value = validity_index(reduced_embeddings.astype(np.float64), labels)
-                    many_validity_values = np.array([validity_index(reduced_embeddings.astype(np.float64), labels) for (reduced_embeddings, labels) in zip(many_reduced_embeddings, many_labels)])
+                    many_validity_values = []
+                    for reduced_embeddings, labels in zip(many_reduced_embeddings, many_labels):
+                        this_validity = validity_index(reduced_embeddings.astype(np.float64), labels)
+                        many_validity_values.append(this_validity)
+                    many_validity_values = np.array(many_validity_values)
                     validity_value = np.mean(many_validity_values)
                     t2 = time.time()
                     logger.info(f"VALIDATION FINISHED IN {round(t2-t1,1)} SECONDS")
@@ -153,7 +158,7 @@ def search_params(embeddings):
 def clean_dataframe(df:pd.DataFrame, embeddings:np.array, col_name:str):
 
     # mask retweets, keep one example
-    unique_mask = df.duplicated(col_name, keep='first')
+    unique_mask = ~df.duplicated(col_name, keep='first')
     unique_rows = df[unique_mask]
     unique_texts = unique_rows[col_name]
     
