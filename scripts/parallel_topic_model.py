@@ -67,7 +67,7 @@ def search_params(embeddings):
     best_params = None
 
     for n_neighbors in [15]:
-        for n_components in [5]:  # , 20, 50]:
+        for n_components in [50]:  # , 20, 50]:
             logger.info(f"{n_components=}, {n_neighbors=}")
             t0 = time.time()
             # reduced_embeddings = umap_model.fit_transform(embeddings)
@@ -96,7 +96,7 @@ def search_params(embeddings):
 
             t1 = time.time()
             logger.info(f"EMBEDDING REDUCED IN {round(t1 - t0, 1)} SECONDS")
-            for min_cluster_size in np.linspace(200, 2000, 10).astype(
+            for min_cluster_size in np.linspace(50, 500, 10).astype(
                 int
             ):  # search 200, 400, ..., 2000
                 for cluster_selection_method in ["eom", "leaf"]:
@@ -180,6 +180,7 @@ def search_params(embeddings):
     best_RAND = RANDOM_SEEDS[
         many_validity_values.argmax()
     ]  # Random seed of the embedding with the best value among those with highest average validity value
+    best_params = list(best_params)
     best_params[-1] = best_RAND
     logger.info(
         f"Best parameters: n_neighbors={best_params[0]}, n_components={best_params[1]}, min_cluster_size={best_params[2]}, cluster_selection_method={best_params[3]}, best_avg_validity_value={max_validity_value}, best seed={best_RAND}"
@@ -303,7 +304,7 @@ def topic_modeling(
     document_info = topic_model.get_document_info(unique_texts)
     noise_percentage = len(document_info.query("Topic == -1")) / len(document_info)
     n_topics = len(topic_info) - 1
-    model_info = f"{python_version = }\n{bertopic_version = }\nVALIDITY INDEX: {validity_value}\nUMAP Seed: {RANDOM_SEEDS[best_params[-1]]}\nUMAP parameters: n_neighbours = {best_params[0]}, n_components = {best_params[1]}\nHDBSCAN parameters: min cluster size = {best_params[2]}, cluster selection method = {best_params[3]}\nN TOPICS: {n_topics}\nNOISE PERCENTAGE: {noise_percentage}."
+    model_info = f"{python_version = }\n{bertopic_version = }\nVALIDITY INDEX: {validity_value}\nUMAP Seed: {best_params[-1]}\nUMAP parameters: n_neighbours = {best_params[0]}, n_components = {best_params[1]}\nHDBSCAN parameters: min cluster size = {best_params[2]}, cluster selection method = {best_params[3]}\nN TOPICS: {n_topics}\nNOISE PERCENTAGE: {noise_percentage}."
     logging.info("MODEL INFO:\n" + model_info)
     model_info_path = os.path.join(".", "models", actual_filename + "_model_info.txt")
     logging.debug(f"MODEL INFO PATH: {model_info_path}")
