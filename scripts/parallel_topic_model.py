@@ -67,7 +67,7 @@ def search_params(embeddings):
     best_params = None
 
     for n_neighbors in [15]:
-        for n_components in [50]:  # , 20, 50]:
+        for n_components in [5]:  # , 20, 50]:
             logger.info(f"{n_components=}, {n_neighbors=}")
             t0 = time.time()
             # reduced_embeddings = umap_model.fit_transform(embeddings)

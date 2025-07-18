@@ -1,0 +1,8 @@
+python_version = '3.12.11 (main, Jun  4 2025, 08:56:18) [GCC 9.4.0]'
+bertopic_version = '0.17.0'
+VALIDITY INDEX: 0.40442267856822006
+UMAP Seed: 33456054
+UMAP parameters: n_neighbours = 15, n_components = 50
+HDBSCAN parameters: min cluster size = 300, cluster selection method = eom
+N TOPICS: 48
+NOISE PERCENTAGE: 0.3176853157134579.
