@@ -51,10 +51,8 @@ DEBUGGING = False  # if True, skips parameter search and performs multithreaded 
 DEVICE = "cpu"
 
 # Try different random seeds
-# Result of [random.randint(0,2**32-1) for _ in range(10)]
 # Needed to take into account UMAP multithreading stochastic behaviour and race conditions.
-# May take a lot of time
-# RANDOM_SEEDS = [301829105, 1928485189, 3147098556, 3424474279, 1458613529, 3342915517, 1825182901, 1648132992, 3153722039, 1532039811]
+# Computing UMAP with a random seed may take a lot of time
 RANDOM_SEEDS = [random.randint(0, 2**32 - 1) for _ in range(5)]
 logger.info(f"{RANDOM_SEEDS = }")
 
@@ -67,19 +65,9 @@ def search_params(embeddings):
     best_params = None
 
     for n_neighbors in [15]:
-        for n_components in [5]:  # , 20, 50]:
+        for n_components in [50]:  # 50 is the highest suggested number of components HDBSCAN can handle while taking a reasonable ammount of time to compute.
             logger.info(f"{n_components=}, {n_neighbors=}")
             t0 = time.time()
-            # reduced_embeddings = umap_model.fit_transform(embeddings)
-
-            # many_umaps = [UMAP(
-            #    n_neighbors=n_neighbors,
-            #    n_components=n_components,
-            #    min_dist=0.0,
-            #    metric="cosine",
-            #    #random_state= random_state #! No random seed search on parameter search, just average the values. Search later for random seed.
-            #    n_jobs=-1
-            # ) for random_state in RANDOM_SEEDS]
 
             umap_model = UMAP(
                 n_neighbors=n_neighbors,
@@ -88,8 +76,8 @@ def search_params(embeddings):
                 metric="cosine",
                 n_jobs=-1,
             )
-            #! No random seed search on parameter search, just average the values. Search later for random seed.
-            # many_reduced_embeddings = [ this_umap.fit_transform(embeddings) for this_umap in many_umaps ]
+            # No random seed search on parameter search, just average the values. Search later for random seed.
+
             many_reduced_embeddings = [
                 umap_model.fit_transform(embeddings) for _ in RANDOM_SEEDS
             ]
@@ -98,7 +86,7 @@ def search_params(embeddings):
             logger.info(f"EMBEDDING REDUCED IN {round(t1 - t0, 1)} SECONDS")
             for min_cluster_size in np.linspace(50, 500, 10).astype(
                 int
-            ):  # search 200, 400, ..., 2000
+            ):
                 for cluster_selection_method in ["eom", "leaf"]:
                     logger.info(
                         f"CLUSTERING WITH PARAMETERS: {min_cluster_size=}, {cluster_selection_method=}"
@@ -113,11 +101,11 @@ def search_params(embeddings):
                         hdbscan_model.fit_predict(reduced_embeddings)
                         for reduced_embeddings in many_reduced_embeddings
                     ]
-                    # labels = hdbscan_model.fit_predict(reduced_embeddings)
+                    
                     t1 = time.time()
                     logger.info(f"CLUSTERING FINISHED IN {round(t1 - t0, 1)} SECONDS")
-                    logger.info(f"STARTING VALIDATION")
-                    # validity_value = validity_index(reduced_embeddings.astype(np.float64), labels)
+                    logger.info("STARTING VALIDATION")
+                    
                     many_validity_values = []
                     for reduced_embeddings, labels in zip(
                         many_reduced_embeddings, many_labels
@@ -134,7 +122,7 @@ def search_params(embeddings):
                     logger.info(f"VALIDITY INDEX: {validity_value}")
 
                     if validity_value > max_validity_value:
-                        best_RAND = None  # RANDOM_SEEDS[many_validity_values.argmax()] # Random seed of the embedding with the best value among those with highest average validity value
+                        best_RAND = None  # Will be assigned later
                         max_validity_value = validity_value
                         best_params = (
                             n_neighbors,
@@ -144,7 +132,7 @@ def search_params(embeddings):
                             best_RAND,
                         )
     logger.info(f"SEARCHING RANDOM SEED IN {RANDOM_SEEDS}")
-    # computing many umap reductions
+    # computing many umap reductions to find a good random seed for the parameters found during the search.
     many_umaps = [
         UMAP(
             n_neighbors=best_params[0],
@@ -314,6 +302,8 @@ def topic_modeling(
     logger.info(f"VALIDITY INDEX: {validity_value}")
 
     # Save the model
+    logger.info("SAVING TOPIC MODEL...")
+    topic_model.umap_model = umap_model # Assign actual UMAP model instead of the emtpy one.
     model_filename = filename.split("/")[-1] + ".topic_model"
     model_path = os.path.join("models", model_filename.split()[-1])
     logger.debug(f"MODEL PATH: {model_path}")
@@ -365,7 +355,6 @@ def main():
     logger.info(
         f"Noise percentage: {round(100 * (len(document_info.query('Topic == -1')) / len(document_info)), 2)}%"
     )
-    # logger.info(topic_info)
 
     os.makedirs("data", exist_ok=True)
     os.makedirs(os.path.join("data", "processed"), exist_ok=True)
