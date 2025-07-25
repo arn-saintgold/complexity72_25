@@ -65,7 +65,9 @@ def search_params(embeddings):
     best_params = None
 
     for n_neighbors in [15]:
-        for n_components in [50]:  # 50 is the highest suggested number of components HDBSCAN can handle while taking a reasonable ammount of time to compute.
+        for n_components in [
+            50
+        ]:  # 50 is the highest suggested number of components HDBSCAN can handle while taking a reasonable ammount of time to compute.
             logger.info(f"{n_components=}, {n_neighbors=}")
             t0 = time.time()
 
@@ -84,9 +86,7 @@ def search_params(embeddings):
 
             t1 = time.time()
             logger.info(f"EMBEDDING REDUCED IN {round(t1 - t0, 1)} SECONDS")
-            for min_cluster_size in np.linspace(50, 500, 10).astype(
-                int
-            ):
+            for min_cluster_size in np.linspace(50, 500, 10).astype(int):
                 for cluster_selection_method in ["eom", "leaf"]:
                     logger.info(
                         f"CLUSTERING WITH PARAMETERS: {min_cluster_size=}, {cluster_selection_method=}"
@@ -101,11 +101,11 @@ def search_params(embeddings):
                         hdbscan_model.fit_predict(reduced_embeddings)
                         for reduced_embeddings in many_reduced_embeddings
                     ]
-                    
+
                     t1 = time.time()
                     logger.info(f"CLUSTERING FINISHED IN {round(t1 - t0, 1)} SECONDS")
                     logger.info("STARTING VALIDATION")
-                    
+
                     many_validity_values = []
                     for reduced_embeddings, labels in zip(
                         many_reduced_embeddings, many_labels
@@ -303,7 +303,9 @@ def topic_modeling(
 
     # Save the model
     logger.info("SAVING TOPIC MODEL...")
-    topic_model.umap_model = umap_model # Assign actual UMAP model instead of the emtpy one.
+    topic_model.umap_model = (
+        umap_model  # Assign actual UMAP model instead of the emtpy one.
+    )
     model_filename = filename.split("/")[-1] + ".topic_model"
     model_path = os.path.join("models", model_filename.split()[-1])
     logger.debug(f"MODEL PATH: {model_path}")
