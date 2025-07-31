@@ -306,6 +306,7 @@ def topic_modeling(
 
     topic_info = topic_model.get_topic_info()
     document_info = topic_model.get_document_info(unique_texts)
+    document_info["OriginalDocument"] = original_texts
     noise_percentage = len(document_info.query("Topic == -1")) / len(document_info)
     n_topics = len(topic_info) - 1
     model_info = f"{python_version = }\n{bertopic_version = }\nVALIDITY INDEX: {validity_value}\nUMAP Seed: {best_params[-1]}\nUMAP parameters: n_neighbours = {best_params[0]}, n_components = {best_params[1]}\nHDBSCAN parameters: min cluster size = {best_params[2]}, cluster selection method = {best_params[3]}\nN TOPICS: {n_topics}\nNOISE PERCENTAGE: {noise_percentage}."
