@@ -44,7 +44,7 @@ def embed_cleaned_texts(
     global DEVICE
     logger.info(f"GETTING EMBEDDER {embedding_model_name}")
     # Load Precomputed embeddings and transformer model
-    logger.debug("CUDA available:", torch.cuda.is_available())
+    logger.debug(f"CUDA available: {torch.cuda.is_available()}")
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA NOT AVAILABLE")
     embedding_model = SentenceTransformer(
@@ -77,19 +77,21 @@ def embed_cleaned_texts(
     texts = tc.clean_dataframe(df, text_column, phrases_to_remove=["&gt;"])
     texts = [str(t) for t in texts.tolist()]
     logger.info("STARTING EMBEDDING")
-    #for batch_size in [128, 64, 32, 16, 8, 4, 2, 1]:
-    #    try:
-    #        logger.info(f"Trying batch size {batch_size}")
-    #        embedding_model.encode(texts, batch_size=batch_size)
-    #        logger.info(f"Success with batch size: {batch_size}")
-    #        break
-    #    except RuntimeError as e:
-    #        if "CUDA out of memory" in str(e):
-    #            torch.cuda.empty_cache()
-    #        else:
-    #            raise e
-    batch_size = 16
-    embeddings = embedding_model.encode(texts, batch_size=batch_size, show_progress_bar=True)
+    for batch_size in [2**i for i in range(10,-1,-1)]:
+        try:
+            logger.info(f"TRYING BATCH SIZE {batch_size}")
+            embeddings = embedding_model.encode(texts, batch_size=batch_size, show_progress_bar=True)
+            logger.info(f"SUCCESS WITH BATCH SIZE: {batch_size}")
+            break
+        except RuntimeError as e:
+            logger.error(f"FAILED WITH BATCH SIZE {batch_size}")
+            if "CUDA out of memory" in str(e):
+                torch.cuda.empty_cache()
+                logger.error("CUDA OUT OF MEMORY")
+            else:
+                raise e
+    #batch_size = 16
+    #embeddings = embedding_model.encode(texts, batch_size=batch_size, show_progress_bar=True)
     with open(embedding_path, "wb") as handle:
         np.save(handle, embeddings)
 

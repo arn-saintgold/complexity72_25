@@ -25,8 +25,9 @@ def clean_dataframe(
     - remove_urls: flag to remove urls from the text
 
     Returns:
-    - df: pandas.DataFrame with cleaned text in the specified column
+        pandas.DataFrame: df with cleaned text in column "Clean"+col_name
     """
+
     if phrases_to_remove is None:
         phrases_to_remove = []
 
@@ -61,11 +62,14 @@ def clean_dataframe(
         if phrase_pattern:
             text = phrase_pattern.sub("", text)
         return re.sub(r"\s+", " ", text).strip()  # Normalize whitespace
-
-    df[column_name] = df[column_name].apply(clean_text)
+    
+    new_col_name = "Clean"+column_name
+    df[new_col_name] = df[column_name].apply(clean_text)
+    
     if remove_empty:
-        return df[df[column_name].str.len() > 0][column_name]
-    return df[column_name]
+        return df[df[new_col_name].str.len() > 0]
+    
+    return df
 
 
 def main():

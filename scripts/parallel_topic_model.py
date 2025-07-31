@@ -180,25 +180,25 @@ def search_params(embeddings:np.array)->List:
     return best_params
 
 
-#def clean_dataframe(df: pd.DataFrame, embeddings: np.array, col_name: str, keep:str|None="first")->Tuple[pd.Series, np.array]:
-#    """
-#    Returns a dataframe and corresponding embedding without duplicates.
-#    Args:
-#        df (pandas.Dataframe): Dataframe with text to extract
-#        embeddings (numpy.array): Embeddings of the texts to extract
-#        col_name (str): name of the text column in df
-#        keep (str): what to do with the duplicates: 'first' to keep the first instance, 'last' to keep the last, None to drop every duplicate
-#    Returns:
-#        tuple(pd.Series, np.array): a tuple of unique texts and corresponding embeddings.
-#    """
-#    # mask retweets, keep one example
-#    unique_mask = ~df.duplicated(col_name, keep=keep)
-#    unique_rows = df[unique_mask]
-#    unique_texts = unique_rows[col_name]
-#
-#    # Select corresponding rows from the embeddings array
-#    unique_embeddings = embeddings[unique_mask]
-#    return unique_texts, unique_embeddings
+def remove_doubles(df: pd.DataFrame, embeddings: np.array, col_name: str, keep:str|None="first")->Tuple[pd.Series, np.array]:
+    """
+    Returns a dataframe and corresponding embedding without duplicates.
+    Args:
+        df (pandas.Dataframe): Dataframe with text to extract
+        embeddings (numpy.array): Embeddings of the texts to extract
+        col_name (str): name of the text column in df
+        keep (str): what to do with the duplicates: 'first' to keep the first instance, 'last' to keep the last, None to drop every duplicate
+    Returns:
+        tuple(pd.Series, np.array): a tuple of unique texts and corresponding embeddings.
+    """
+    # mask retweets, keep one example
+    unique_mask = ~df.duplicated(col_name, keep=keep)
+    unique_rows = df[unique_mask]
+    unique_texts = unique_rows[col_name]
+
+    # Select corresponding rows from the embeddings array
+    unique_embeddings = embeddings[unique_mask]
+    return unique_texts, unique_embeddings
 
 
 def topic_modeling(
@@ -240,9 +240,10 @@ def topic_modeling(
         raise ValueError(f"Column '{text_column}' does not exist in the DataFrame.")
 
     # Choose unique texts and embeddings
-    unique_texts = tc.clean_dataframe(df, embeddings, text_column)
-    unique_embeddings = embeddings.copy()
-
+    clean_df = tc.clean_dataframe(df, embeddings, text_column)
+    unique_texts, unique_embeddings = remove_doubles(clean_df[["Clean"+text_column]], embeddings, "Clean"+text_column)
+    original_texts, _ = remove_doubles(clean_df[[text_column]], embeddings, text_column)
+    assert len(original_texts) == len(unique_texts) == len(unique_embeddings), f"A problem occurred while cleaning texts: {len(original_texts)=}, {len(unique_texts)=}, {len(unique_embeddings)=}"
     # Free some spce
     embeddings = None
     df = None
