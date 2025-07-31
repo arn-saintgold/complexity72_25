@@ -12,12 +12,16 @@
 # https://github.com/TutteInstitute/fast_hdbscan
 
 import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..')))  # Adjust as needed
+import my_text_cleaning as tc
 import logging
 import random
 from bertopic import __version__ as bertopic_version
 from sys import version as python_version
 import time
 import argparse
+from typing import Tuple, List
 import pandas as pd
 import numpy as np
 from umap import UMAP
@@ -57,7 +61,7 @@ RANDOM_SEEDS = [random.randint(0, 2**32 - 1) for _ in range(5)]
 logger.info(f"{RANDOM_SEEDS = }")
 
 
-def search_params(embeddings):
+def search_params(embeddings:np.array)->List:
     global DEBUGGING
     global RANDOM_SEEDS
     logger.info("STARTING PARAMETER SELECTION")
@@ -176,20 +180,30 @@ def search_params(embeddings):
     return best_params
 
 
-def clean_dataframe(df: pd.DataFrame, embeddings: np.array, col_name: str):
-    # mask retweets, keep one example
-    unique_mask = ~df.duplicated(col_name, keep="first")
-    unique_rows = df[unique_mask]
-    unique_texts = unique_rows[col_name]
-
-    # Select corresponding rows from the embeddings array
-    unique_embeddings = embeddings[unique_mask]
-    return unique_texts, unique_embeddings
+#def clean_dataframe(df: pd.DataFrame, embeddings: np.array, col_name: str, keep:str|None="first")->Tuple[pd.Series, np.array]:
+#    """
+#    Returns a dataframe and corresponding embedding without duplicates.
+#    Args:
+#        df (pandas.Dataframe): Dataframe with text to extract
+#        embeddings (numpy.array): Embeddings of the texts to extract
+#        col_name (str): name of the text column in df
+#        keep (str): what to do with the duplicates: 'first' to keep the first instance, 'last' to keep the last, None to drop every duplicate
+#    Returns:
+#        tuple(pd.Series, np.array): a tuple of unique texts and corresponding embeddings.
+#    """
+#    # mask retweets, keep one example
+#    unique_mask = ~df.duplicated(col_name, keep=keep)
+#    unique_rows = df[unique_mask]
+#    unique_texts = unique_rows[col_name]
+#
+#    # Select corresponding rows from the embeddings array
+#    unique_embeddings = embeddings[unique_mask]
+#    return unique_texts, unique_embeddings
 
 
 def topic_modeling(
-    filename, text_column, embedding_model_name="all-MiniLM-L6-v2", *args, **kwargs
-):
+    filename:str, text_column:str, embedding_model_name="all-MiniLM-L6-v2", *args, **kwargs
+)-> Tuple[pd.DataFrame, pd.DataFrame]:
     # TODO If UMAP parameters are fixed, compute embeddints right away.
 
     global DEBUGGING
@@ -226,7 +240,8 @@ def topic_modeling(
         raise ValueError(f"Column '{text_column}' does not exist in the DataFrame.")
 
     # Choose unique texts and embeddings
-    unique_texts, unique_embeddings = clean_dataframe(df, embeddings, text_column)
+    unique_texts = tc.clean_dataframe(df, embeddings, text_column)
+    unique_embeddings = embeddings.copy()
 
     # Free some spce
     embeddings = None

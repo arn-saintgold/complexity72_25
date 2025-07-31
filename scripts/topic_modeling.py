@@ -9,6 +9,9 @@
 #
 #  
 import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..', '..')))  # Adjust as needed
+from scripts import my_text_cleaning as tc
 import argparse
 import pandas as pd
 import numpy as np
@@ -71,9 +74,6 @@ def search_params(embeddings):
     return best_params
 
 
-def clean_dataframe(df, col_name):
-    return df[df[col_name].str.len() > 0]
-
 
 def topic_modeling(
     filename, text_column, embedding_model_name="all-MiniLM-L6-v2", *args, **kwargs
@@ -81,9 +81,9 @@ def topic_modeling(
     global DEBUG
     # Load the data
     if filename.endswith(".parquet"):
-        df = clean_dataframe(pd.read_parquet(filename), text_column)
+        df = tc.clean_dataframe(pd.read_parquet(filename), text_column)
     elif filename.endswith("csv"):
-        df = clean_dataframe(pd.read_csv(filename), text_column)
+        df = tc.clean_dataframe(pd.read_csv(filename), text_column)
     else:
         raise ValueError("Extension not recognized")
     # Take subset of data
