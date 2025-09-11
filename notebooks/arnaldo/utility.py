@@ -165,9 +165,9 @@ def compare_groups(x, y, alternative='two-sided', alpha=0.05):
             direction = "larger" if delta > 0 else "smaller"
         elif alternative == 'less':
             direction = "smaller" if delta < 0 else "larger"
-        print(f"→ Statistically significant: x appears {direction} than y (α={alpha})")
+        print(f"→ \33[31mStatistically significant\33[0m: x appears {direction} than y (α={alpha})")
     else:
-        print(f"→ No statistically significant difference detected at α={alpha}")
+        print(f"→ \33[34mNo statistically significant difference\33[0m detected at α={alpha}")
     
     # Cliff's delta interpretation
     abs_delta = abs(delta)
