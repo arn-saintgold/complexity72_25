@@ -130,6 +130,7 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.octis
 env/
 venv/
 ENV/
