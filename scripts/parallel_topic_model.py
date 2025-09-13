@@ -13,7 +13,8 @@
 
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..')))  # Adjust as needed
+
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(), "..")))  # Adjust as needed
 import my_text_cleaning as tc
 import logging
 import random
@@ -42,14 +43,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-numba_logger = logging.getLogger("numba")
-numba_logger.setLevel(logging.WARNING)
-bertopic_logger = logging.getLogger("bertopic")
-bertopic_logger.setLevel(logging.WARNING)
-sentence_transformers_logger = logging.getLogger("sentence_transformers")
-sentence_transformers_logger.setLevel(logging.WARNING)
-transformers_logger = logging.getLogger("transformers")
-transformers_logger.setLevel(logging.WARNING)
+logging.getLogger("numba").setLevel(logging.WARNING)
+logging.getLogger("bertopic").setLevel(logging.WARNING)
+logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
+logging.getLogger("transformers").setLevel(logging.WARNING)
+logging.getLogger("huggingface_hub").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("requests").setLevel(logging.WARNING)
 
 DEBUGGING = False  # if True, skips parameter search and performs multithreaded umap
 DEVICE = "cpu"
@@ -58,10 +58,9 @@ DEVICE = "cpu"
 # Needed to take into account UMAP multithreading stochastic behaviour and race conditions.
 # Computing UMAP with a random seed may take a lot of time
 RANDOM_SEEDS = [random.randint(0, 2**32 - 1) for _ in range(5)]
-logger.info(f"{RANDOM_SEEDS = }")
 
 
-def search_params(embeddings:np.array)->List:
+def search_params(embeddings: np.ndarray) -> List:
     global DEBUGGING
     global RANDOM_SEEDS
     logger.info("STARTING PARAMETER SELECTION")
@@ -180,7 +179,12 @@ def search_params(embeddings:np.array)->List:
     return best_params
 
 
-def remove_doubles(df: pd.DataFrame, embeddings: np.array, col_name: str, keep:str|None="first")->Tuple[pd.DataFrame, np.array]:
+def deduplicate_text_and_embeddings(
+    df: pd.DataFrame,
+    embeddings: np.ndarray | None,
+    col_name: str,
+    keep: str | None = "first",
+) -> Tuple[pd.DataFrame, np.ndarray]:
     """
     Returns a dataframe and corresponding embedding without duplicates.
     Args:
@@ -189,20 +193,27 @@ def remove_doubles(df: pd.DataFrame, embeddings: np.array, col_name: str, keep:s
         col_name (str): name of the text column in df
         keep (str): what to do with the duplicates: 'first' to keep the first instance, 'last' to keep the last, None to drop every duplicate
     Returns:
-        tuple(pd.DataFrame, np.array): a tuple of the new text and corresponding embeddings.
+        tuple(pd.DataFrame, np.ndarray): a tuple of the new text and corresponding embeddings.
     """
     # mask retweets, keep one example
     unique_mask = ~df.duplicated(col_name, keep=keep)
     unique_rows = df[unique_mask]
 
     # Select corresponding rows from the embeddings array
-    unique_embeddings = embeddings[unique_mask]
-    return unique_rows, unique_embeddings
+    if embeddings is not None:
+        unique_embeddings = embeddings[unique_mask]
+        return unique_rows, unique_embeddings
+    else:
+        return unique_rows, None
 
 
 def topic_modeling(
-    filename:str, text_column:str, embedding_model_name="all-MiniLM-L6-v2", *args, **kwargs
-)-> Tuple[pd.DataFrame, pd.DataFrame]:
+    filename: str,
+    text_column: str,
+    embedding_model_name="all-MiniLM-L6-v2",
+    *args,
+    **kwargs,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     # TODO If UMAP parameters are fixed, compute embeddints right away.
 
     global DEBUGGING
@@ -240,9 +251,18 @@ def topic_modeling(
 
     # Choose unique texts and embeddings
     clean_df = tc.clean_dataframe(df, text_column)
-    unique_df, unique_embeddings = remove_doubles(clean_df[["Clean"+text_column, text_column]], embeddings, "Clean"+text_column)
-    unique_texts, original_texts = unique_df["Clean"+text_column], unique_df[text_column]
-    assert len(original_texts) == len(unique_texts) == len(unique_embeddings), f"A problem occurred while cleaning texts: {len(original_texts)=}, {len(unique_texts)=}, {len(unique_embeddings)=}"
+    unique_df, unique_embeddings = deduplicate_text_and_embeddings(
+        clean_df[["Clean" + text_column, text_column]],
+        embeddings,
+        "Clean" + text_column,
+    )
+    unique_texts, original_texts = (
+        unique_df["Clean" + text_column],
+        unique_df[text_column],
+    )
+    assert len(original_texts) == len(unique_texts) == len(unique_embeddings), (
+        f"A problem occurred while cleaning texts: {len(original_texts)=}, {len(unique_texts)=}, {len(unique_embeddings)=}"
+    )
     # Free some spce
     embeddings = None
     df = None
@@ -298,7 +318,7 @@ def topic_modeling(
         validity_value = validity_index(reduced_embeddings.astype(np.float64), topics)
     except AttributeError as e:
         logging.error(e)
-        logging.error("Converting topics to np.array")
+        logging.error("Converting topics to np.ndarray")
         validity_value = validity_index(
             reduced_embeddings.astype(np.float64), np.array(topics)
         )
@@ -348,6 +368,8 @@ def topic_modeling(
 
 
 def main():
+    logger.info(f"{RANDOM_SEEDS = }")
+
     parser = argparse.ArgumentParser(description="Perform topic modeling on text data.")
     parser.add_argument(
         "filename", type=str, help="Path to the CSV file containing the text data."
