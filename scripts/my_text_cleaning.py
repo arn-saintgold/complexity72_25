@@ -3,10 +3,6 @@ import pandas as pd
 from typing import List
 
 
-import re
-import pandas as pd
-from typing import List
-
 def clean_dataframe(
     df: pd.DataFrame,
     column_name: str,
@@ -57,7 +53,11 @@ def clean_dataframe(
     phrase_pattern = None
     if phrases_to_remove:
         escaped_phrases = []
-        for phrase in (phrases_to_remove if isinstance(phrases_to_remove, list) else [phrases_to_remove]):
+        for phrase in (
+            phrases_to_remove
+            if isinstance(phrases_to_remove, list)
+            else [phrases_to_remove]
+        ):
             if re.match(r"^\w+$", phrase):  # only word chars → safe for \b
                 escaped_phrases.append(r"\b" + re.escape(phrase) + r"\b")
             else:
@@ -98,13 +98,13 @@ def clean_dataframe(
 
         # Normalize whitespace
         return re.sub(r"\s+", " ", text).strip()
-    
+
     new_col_name = "Clean" + column_name
     df[new_col_name] = df[column_name].apply(clean_text)
-    
+
     if remove_empty:
         return df[df[new_col_name].str.len() > 0].copy()
-    
+
     return df.copy()
 
 

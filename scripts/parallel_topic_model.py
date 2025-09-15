@@ -191,7 +191,7 @@ def deduplicate_text_and_embeddings(
         df (pandas.DataFrame): Dataframe with text to extract
         embeddings (numpy.ndarray): Embeddings of the texts to extract
         col_name (str): Name of the text column in df
-        keep (str): What to do with the duplicates: 'first' to keep the first instance, 
+        keep (str): What to do with the duplicates: 'first' to keep the first instance,
                     'last' to keep the last, None to drop every duplicate
     Returns:
         tuple(pd.DataFrame, np.ndarray | None): A tuple of the new text and corresponding embeddings.
@@ -258,8 +258,8 @@ def topic_modeling(
 
     # Choose unique texts and embeddings
     clean_df = tc.clean_dataframe(
-        df, 
-        text_column, 
+        df,
+        text_column,
         phrases_to_remove=["&gt;", "&lt;", "&amp;", "RT : "],
         remove_empty=False,
         remove_urls=True,
@@ -268,7 +268,7 @@ def topic_modeling(
         user_placeholder="user",
         strip_punctuation=False,
         lowercase=False,
-        )
+    )
     unique_df, unique_embeddings = deduplicate_text_and_embeddings(
         clean_df[["Clean" + text_column, text_column]],
         embeddings,
