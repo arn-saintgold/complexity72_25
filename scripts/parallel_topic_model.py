@@ -13,9 +13,11 @@
 
 import os
 import sys
-
+sys.path.append(os.path.abspath(os.path.join(os.getcwd())))
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), "..")))  # Adjust as needed
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(), "scripts")))
 import my_text_cleaning as tc
+
 import logging
 import random
 from bertopic import __version__ as bertopic_version
@@ -30,12 +32,14 @@ from umap import UMAP
 # from sklearn.decomposition import PCA
 from bertopic.dimensionality import BaseDimensionalityReduction as umap_was_precomputed
 from fast_hdbscan import HDBSCAN
-from hdbscan import validity_index
+#from hdbscan import validity_index
+from scripts.my_validity_index import validity_index # Custom version to avoid numba issues
 from sklearn.feature_extraction.text import CountVectorizer
 from bertopic.vectorizers import ClassTfidfTransformer
 from bertopic import BERTopic
 from sentence_transformers import SentenceTransformer
 
+from joblib import Parallel, delayed
 
 logging.basicConfig(
     level=logging.DEBUG,  # or DEBUG, WARNING, etc.
@@ -110,14 +114,14 @@ def search_params(embeddings: np.ndarray) -> List:
                     logger.info("STARTING VALIDATION")
 
                     many_validity_values = []
-                    for reduced_embeddings, labels in zip(
-                        many_reduced_embeddings, many_labels
-                    ):
-                        this_validity = validity_index(
-                            reduced_embeddings.astype(np.float64), labels
-                        )
-                        many_validity_values.append(this_validity)
-                    many_validity_values = np.array(many_validity_values)
+
+                    many_reduced_embeddings = [arr.astype(np.float64, copy=False) for arr in many_reduced_embeddings]
+
+                    many_validity_values = Parallel(n_jobs=-1)(
+                        delayed(validity_index)(emb, labels)
+                        for emb, labels in zip(many_reduced_embeddings, many_labels)
+                    )
+
                     validity_value = np.mean(many_validity_values)
                     t2 = time.time()
                     logger.info(f"VALIDATION FINISHED IN {round(t2 - t1, 1)} SECONDS")
