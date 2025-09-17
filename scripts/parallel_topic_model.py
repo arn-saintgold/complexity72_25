@@ -94,7 +94,7 @@ def search_params(embeddings: np.ndarray) -> List:
             t1 = time.time()
             logger.info(f"EMBEDDING REDUCED IN {round(t1 - t0, 1)} SECONDS")
             for min_cluster_size in np.linspace(50, 500, 10).astype(int):
-                for cluster_selection_method in ["eom", "leaf"]:
+                for cluster_selection_method in ["eom"]:# ["eom", "leaf"]:
                     logger.info(
                         f"CLUSTERING WITH PARAMETERS: {min_cluster_size=}, {cluster_selection_method=}"
                     )
@@ -163,6 +163,14 @@ def search_params(embeddings: np.ndarray) -> List:
         hdbscan_model.fit_predict(reduced_embeddings)
         for reduced_embeddings in many_reduced_embeddings
     ]
+
+    many_reduced_embeddings = [arr.astype(np.float64, copy=False) for arr in many_reduced_embeddings]
+
+    many_validity_values = Parallel(n_jobs=-1)(
+        delayed(validity_index)(emb, labels)
+        for emb, labels in zip(many_reduced_embeddings, many_labels)
+    )
+
     many_validity_values = np.array(
         [
             validity_index(reduced_embeddings.astype(np.float64), labels)
