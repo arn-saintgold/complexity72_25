@@ -200,7 +200,9 @@ cython_debug/
 *.json
 *.zip
 *.gzip
-
+*.gz
+*.xz
+*.bkp
 
 # Python
 *.npy
@@ -216,3 +218,11 @@ cython_debug/
 .RData
 .Ruserdata
 .Rproj.user
+
+# Temp reports
+notebooks/arnaldo/cop26_topic_entropy.html
+notebooks/arnaldo/cop26_topic_entropy.pdf
+notebooks/arnaldo/covid_topic_entropy.html
+notebooks/arnaldo/covid_topic_entropy.pdf
+notebooks/arnaldo/ukraine_topic_entropy.html
+notebooks/arnaldo/ukraine_topic_entropy.pdf
