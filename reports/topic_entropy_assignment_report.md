@@ -1,11 +1,29 @@
 # Topic Modeling and Topic Entropy
 
+We applied BERTopic to the COP26, COVID, and Ukraine datasets, using transformer-based embeddings (all-mpnet-base-v2), dimensionality reduction, and density-based clustering to extract topics, optimizing for cluster quality using relative validity. 
 
+Topic quality was evaluated with c_v coherence and two diversity measures: TopicDiversity and Word Embedding-based Diversity (WED). Dominant topics were assigned to users using frequency- and entropy-based strategies, excluding noise topics and applying thresholds to ensure focused assignment, with topic entropy and effective topic numbers capturing engagement diversity. 
+
+Associations between dominant topics and user metadata (Reliability, Political Leaning, Individual/Organization, Category) were assessed via χ² tests, and Mann-Whitney U tests compared entropy distributions, revealing dataset-specific patterns of user-topic engagement.
 
 ## Differences Across Datasets
 
 **Chi-squared Test (Association with Dominant Topic):**
 *   **COP26** stands out with **no significant association** for 'Reliability' and 'Political Leaning', both showing weak to moderate effect sizes. In contrast, for both the **COVID** and **Ukraine** datasets, all four variables ('Reliability', 'Political Leaning', 'Individual/Organization', and 'Category') showed **significant associations** with dominant topic, all with moderate effect sizes. This suggests that user characteristics were more consistently associated with their dominant topic in the COVID and Ukraine contexts than in COP26.
+
+
+| Data | Reliability | Leaning | Ind/org | Category |
+| --- | --- | --- |--- | --- |
+| Cop26 | ✘ | ✘ | ✔ | ✔ |
+|Covid |  ✔ | ✔ | ✔ | ✔ |
+| Ukraine | ✔ | ✔ | ✔ | ✔ |
+
+χ² tests between assigned user topics and metadata
+✔ indicates significant and at least moderate association; 
+✘ indicates non significant association or weak association.
+_____________________________________________
+
+
 
 **Mann-Whitney U Test (Differences in Topic Entropy):**
 *   **Reliability:** In **COP26** and **Ukraine**, no significant difference in topic entropy was found between reliable and questionable users. However, in the **COVID** dataset, reliable users' topic entropy **stochastically dominated** questionable users' topic entropy, indicating a likely difference.
@@ -15,6 +33,23 @@
 *   **Individual vs. Organization:** In both **COP26** and **COVID**, individual users' topic entropy was **stochastically dominated** by organisation users, indicating that organisations tended to have higher topic entropy (i.e., less focused on a single topic). The **Ukraine** dataset also showed this one-sided stochastic dominance, although the two-sided test for overall difference was not significant (p=0.060). This implies a consistent pattern where individual users are more focused in their topic engagement than organisations across the board.
 
 
+| Data | R vs Q | Ind/Org |
+| --- | --- | --- |
+| Cop26 |  | |  ✘|
+|Covid |  ✔ | ✘|
+| Ukraine |  | ✘|
+
+Mann-Whitney tests between topic entropy and Reliability, and Individual/Organization association. ✔ indicates significant stochastical dominance of the first class (R, Ind) over the second one (Q, Org), meaning that the first has more entropy than the second; ✘ indicates the reverse. No indication indicates no significant difference.
+
+| Data |  R vs L | R vs C | C vs L | R vs ? | C vs ? | L vs ?|
+| --- |  --- |--- | --- | --- | --- | --- |
+| Cop26 |  |  |  | ✔ | ✔ | ✔ |
+|Covid |   | ✘ | ✔ | | ✔| |
+| Ukraine | | | ✔ | | | ✘|
+
+Mann-Whitney tests between topic entropy and Political leaning.
+
+Category plots not present!
 
 ### COP26 Dataset
 
@@ -68,7 +103,7 @@
     *   For **L vs Unknown**, a **likely difference** was found (p=0.01768), with L-leaning users' topic entropy being **stochastically dominated** by that of Unknown users.
 *   **Individual vs. Organization:** The two-sided test showed **no significant difference** (p=0.060) in topic entropy between individual and organisation users. However, a one-sided test indicated that individual users' topic entropy is **stochastically dominated** by that of organisation users.
 
-## Methodology
+## Methodology (Heavy AI Help)
 
 ### Topic Model
 
@@ -102,3 +137,5 @@ The entropy-based approach aimed to assign topics only when a user’s topic dis
 A dominant topic was assigned only if the user’s topic entropy fell below a specified maximum threshold, and assignments were explicitly prevented in cases of ties at this threshold. Although this method resulted in lower user retention due to its stricter focus criterion, it provided a more robust measure of individual topical focus.
 
 Finally, the results from both assignment strategies, including topic entropy and effective topic numbers, were combined with user metadata for downstream analyses. User retention rates, defined as the percentage of users receiving non-null topic assignments, were evaluated across different threshold settings to inform the selection of the assignment methodology.
+
+To evaluate differences in association with a dominant topic we performed χ² tests on topics and users thereby associated.
