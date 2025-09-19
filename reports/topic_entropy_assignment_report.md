@@ -19,7 +19,7 @@ Associations between dominant topics and user metadata (Reliability, Political L
 ✘ indicates non significant association or weak association.
 
 **Chi-squared Test (Association with Dominant Topic):**
-*   **COP26** stands out with **no significant association** for 'Reliability' and 'Political Leaning', both showing weak to moderate effect sizes. In contrast, for both the **COVID** and **Ukraine** datasets, all four variables ('Reliability', 'Political Leaning', 'Individual/Organization', and 'Category') showed **significant associations** with dominant topic, all with moderate effect sizes. This suggests that user characteristics were more consistently associated with their dominant topic in the COVID and Ukraine contexts than in COP26.
+*   For all the datasets, all four variables ('Reliability', 'Political Leaning', 'Individual/Organization', and 'Category') showed **significant associations** with dominant topic, all with moderate effect sizes. This suggests that user characteristics were more consistently associated with their dominant topic in the COVID and Ukraine contexts than in COP26.
 
 _____________________________________________
 
