@@ -8,21 +8,36 @@ Associations between dominant topics and user metadata (Reliability, Political L
 
 ## Differences Across Datasets
 
-**Chi-squared Test (Association with Dominant Topic):**
-*   **COP26** stands out with **no significant association** for 'Reliability' and 'Political Leaning', both showing weak to moderate effect sizes. In contrast, for both the **COVID** and **Ukraine** datasets, all four variables ('Reliability', 'Political Leaning', 'Individual/Organization', and 'Category') showed **significant associations** with dominant topic, all with moderate effect sizes. This suggests that user characteristics were more consistently associated with their dominant topic in the COVID and Ukraine contexts than in COP26.
-
-
-| Data | Reliability | Leaning | Ind/org | Category |
-| --- | --- | --- |--- | --- |
-| Cop26 | ✘ | ✘ | ✔ | ✔ |
-|Covid |  ✔ | ✔ | ✔ | ✔ |
-| Ukraine | ✔ | ✔ | ✔ | ✔ |
+|   Data  | Reliability | Leaning | Ind/org | Category |
+| ------- | ----------- | ------- |-------- | -------- |
+|  Cop26  |     ✘       |    ✘    |    ✔    |     ✔    |
+|  Covid  |     ✔       |    ✔    |    ✔    |     ✔    |
+| Ukraine |     ✔       |    ✔    |    ✔    |     ✔    |
 
 χ² tests between assigned user topics and metadata
 ✔ indicates significant and at least moderate association; 
 ✘ indicates non significant association or weak association.
+
+**Chi-squared Test (Association with Dominant Topic):**
+*   **COP26** stands out with **no significant association** for 'Reliability' and 'Political Leaning', both showing weak to moderate effect sizes. In contrast, for both the **COVID** and **Ukraine** datasets, all four variables ('Reliability', 'Political Leaning', 'Individual/Organization', and 'Category') showed **significant associations** with dominant topic, all with moderate effect sizes. This suggests that user characteristics were more consistently associated with their dominant topic in the COVID and Ukraine contexts than in COP26.
+
 _____________________________________________
 
+|   Data  | R vs Q | Ind/Org |
+| ------- | ------ | ------- |
+|  Cop26  |        |    ✘    |
+|  Covid  |   ✔    |    ✘    |
+| Ukraine |        |    ✘    |
+
+Mann-Whitney tests between topic entropy and Reliability, and Individual/Organization association. ✔ indicates significant stochastical dominance of the first class (R, Ind) over the second one (Q, Org), meaning that the first has more entropy than the second; ✘ indicates the reverse. No indication indicates no significant difference.
+
+|   Data  |  R vs L | R vs C | C vs L | R vs ? | C vs ? | L vs ?|
+| ------- |  ------ |------- | ------ | ------ | ------ | ----- |
+|  Cop26  |         |        |        |   ✔    |    ✔   |   ✔   |
+|  Covid  |         |    ✘   |    ✔   |        |    ✔   |       |
+| Ukraine |         |        |    ✔   |        |        |   ✘   |
+
+Mann-Whitney tests between topic entropy and Political leaning.
 
 
 **Mann-Whitney U Test (Differences in Topic Entropy):**
@@ -33,23 +48,8 @@ _____________________________________________
 *   **Individual vs. Organization:** In both **COP26** and **COVID**, individual users' topic entropy was **stochastically dominated** by organisation users, indicating that organisations tended to have higher topic entropy (i.e., less focused on a single topic). The **Ukraine** dataset also showed this one-sided stochastic dominance, although the two-sided test for overall difference was not significant (p=0.060). This implies a consistent pattern where individual users are more focused in their topic engagement than organisations across the board.
 
 
-| Data | R vs Q | Ind/Org |
-| --- | --- | --- |
-| Cop26 |  | |  ✘|
-|Covid |  ✔ | ✘|
-| Ukraine |  | ✘|
 
-Mann-Whitney tests between topic entropy and Reliability, and Individual/Organization association. ✔ indicates significant stochastical dominance of the first class (R, Ind) over the second one (Q, Org), meaning that the first has more entropy than the second; ✘ indicates the reverse. No indication indicates no significant difference.
-
-| Data |  R vs L | R vs C | C vs L | R vs ? | C vs ? | L vs ?|
-| --- |  --- |--- | --- | --- | --- | --- |
-| Cop26 |  |  |  | ✔ | ✔ | ✔ |
-|Covid |   | ✘ | ✔ | | ✔| |
-| Ukraine | | | ✔ | | | ✘|
-
-Mann-Whitney tests between topic entropy and Political leaning.
-
-Category plots not present!
+Category tests not present!
 
 ### COP26 Dataset
 
@@ -107,21 +107,21 @@ Category plots not present!
 
 ### Topic Model
 
-We performed topic modeling on the three dataset using the BERTopic framework, which integrates transformer-based embeddings, dimensionality reduction, and density-based clustering into a unified pipeline. Texts were first cleaned using a custom preprocessing workflow that removed empty strings, URLs, and extraneous phrases (e.g., HTML escape sequences), while normalizing mentions and hashtags. Duplicate documents were removed, retaining the first occurrence, and the cleaned texts were stored alongside the original texts for reference.
+We performed topic modeling on the three dataset using the BERTopic framework, which integrates transformer-based embeddings, dimensionality reduction, and density-based clustering into a unified pipeline. Texts were first cleaned removing empty strings, URLs, and extraneous phrases (HTML escape sequences, boilerplate text), while normalizing mentions and hashtags. Duplicate documents were removed, retaining the first occurrence, and the cleaned texts were stored alongside the original texts for reference.
 
 Semantic embeddings were obtained using the `all-mpnet-base-v2` SentenceTransformer model. Precomputed embeddings were loaded when available, otherwise they were generated from the cleaned texts. The BERTopic pipeline then reduced the embeddings’ dimensionality, identified clusters, and extracted interpretable topics using class-based TF-IDF weighting of unigrams and bigrams. Optimal pipeline parameters, including dimensionality reduction and clustering settings as well as random seed, were selected by maximizing cluster quality measured through validity index. Each document was assigned to a topic, with low-density points labeled as noise.
 
 ### Topic Quality
 
-The quality of the topic models was assessed using coherence and diversity metrics. Document texts were first preprocessed removing URLs, mentions, hashtags, emojis, and extraneous whitespace, followed by lemmatization. Topics generated by the BERTopic pipeline were similarly cleaned and lemmatized.
+The quality of the topic models was assessed using coherence and diversity metrics. Document texts were first preprocessed removing URLs, mentions, hashtags, emojis, and extraneous whitespace, followed by lemmatization. Topics generated by the BERTopic pipeline were similarly cleaned and lemmatized. 
 
 Coherence was computed using the `c_v` coherence metric, which evaluates the semantic similarity among the top words within each topic. Diversity was measured using two complementary approaches. First, a standard TopicDiversity metric quantified the proportion of unique terms across topics, reflecting the distinctiveness of topic representations. Second, Word Embedding-based Diversity (WED) was calculated by mapping topic words to pre-trained word embeddings (Word2Vec) and computing the average pairwise cosine distance between all words within each topic, providing a semantic measure of topic spread. These metrics were applied consistently across all datasets to provide standardized, interpretable measures of topic model quality.
 
-| Data | #Docs | Min Clust Size |#Topics | Noise% | RV | C_V | Diversity | WED |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | 
-| Cop26 | 105,383 | 400 | 27 |  22.15% | 39.67% | 49.12% | 49.64% | 80.88% | 
-| Covid | 545,032 | 250 | 163 | 41.74% | 34.75% | 55.13% | 43.78% | 78.43% |
-| Ukraine | 787,872 | 500 | 137 | 48.61% | 32.35% | 61.03% | 49.71% | 74.04% |
+|   Data  |  #Docs  | Min Clust Size |#Topics| Noise% |    RV    |   C_V  | Diversity | WED    |
+| ------- | ------- | -------------- | ----- | ------ | -------- | ------ | --------- | ------ | 
+|  Cop26  | 105,383 |       400      |   27  | 22.15% |  39.67%  | 52.78% |   78.62%  | 80.52% | 
+|  Covid  | 545,032 |       250      |  163  | 41.74% |  34.75%  | 47.33% |   66.55%  | 88.86% |
+| Ukraine | 787,872 |       500      |  137  | 48.61% |  32.35%  | 54.37% |   71.80%  | 76.82% |
 
 
 ### Topic Entropy and Assignment
