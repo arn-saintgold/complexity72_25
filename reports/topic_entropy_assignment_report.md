@@ -10,7 +10,7 @@ Associations between dominant topics and user metadata (Reliability, Political L
 
 |   Data  | Reliability | Leaning | Ind/org | Category |
 | ------- | ----------- | ------- |-------- | -------- |
-|  Cop26  |     ✘       |    ✘    |    ✔    |     ✔    |
+|  Cop26  |     ✔       |    ✔    |    ✔    |     ✔    |
 |  Covid  |     ✔       |    ✔    |    ✔    |     ✔    |
 | Ukraine |     ✔       |    ✔    |    ✔    |     ✔    |
 
@@ -117,11 +117,11 @@ The quality of the topic models was assessed using coherence and diversity metri
 
 Coherence was computed using the `c_v` coherence metric, which evaluates the semantic similarity among the top words within each topic. Diversity was measured using two complementary approaches. First, a standard TopicDiversity metric quantified the proportion of unique terms across topics, reflecting the distinctiveness of topic representations. Second, Word Embedding-based Diversity (WED) was calculated by mapping topic words to pre-trained word embeddings (Word2Vec) and computing the average pairwise cosine distance between all words within each topic, providing a semantic measure of topic spread. These metrics were applied consistently across all datasets to provide standardized, interpretable measures of topic model quality.
 
-|   Data  |  #Docs  | Min Clust Size |#Topics| Noise% |    RV    |   C_V  | Diversity | WED    |
-| ------- | ------- | -------------- | ----- | ------ | -------- | ------ | --------- | ------ | 
-|  Cop26  | 105,383 |       400      |   27  | 22.15% |  39.67%  | 52.78% |   78.62%  | 80.52% | 
-|  Covid  | 545,032 |       250      |  163  | 41.74% |  34.75%  | 47.33% |   66.55%  | 88.86% |
-| Ukraine | 787,872 |       500      |  137  | 48.61% |  32.35%  | 54.37% |   71.80%  | 76.82% |
+| Dataset |  N Docs | Min Clust Size |N Topics | Noise % |   RV   |   C_V  | Diversity |   WED  |
+| ------- | ------- | -------------- | ------- | ------- | ------ | ------ | --------- | ------ | 
+|  Cop26  | 105,383 |       150      |    77   |  39.65% | 40.40% | 52.13% |   72.18%  | 80.38% | 
+|  Covid  | 545,032 |       250      |   163   |  41.74% | 34.75% | 47.33% |   66.55%  | 88.86% |
+| Ukraine | 787,872 |       500      |   137   |  48.61% | 32.35% | 54.37% |   71.80%  | 76.82% |
 
 
 ### Topic Entropy and Assignment
