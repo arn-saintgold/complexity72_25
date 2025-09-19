@@ -18,10 +18,6 @@ Associations between dominant topics and user metadata (Reliability, Political L
 ✔ indicates significant and at least moderate association; 
 ✘ indicates non significant association or weak association.
 
-**Chi-squared Test (Association with Dominant Topic):**
-*   For all the datasets, all four variables ('Reliability', 'Political Leaning', 'Individual/Organization', and 'Category') showed **significant associations** with dominant topic, all with moderate effect sizes. This suggests that user characteristics were more consistently associated with their dominant topic in the COVID and Ukraine contexts than in COP26.
-
-_____________________________________________
 
 |   Data  | R vs Q | Ind/Org |
 | ------- | ------ | ------- |
@@ -40,6 +36,12 @@ Mann-Whitney tests between topic entropy and Reliability, and Individual/Organiz
 Mann-Whitney tests between topic entropy and Political leaning.
 
 
+**Chi-squared Test (Association with Dominant Topic):**
+*   For all the datasets, all four variables ('Reliability', 'Political Leaning', 'Individual/Organization', and 'Category') showed **significant associations** with dominant topic, all with moderate effect sizes. This suggests that user characteristics were more consistently associated with their dominant topic in the COVID and Ukraine contexts than in COP26.
+
+_____________________________________________
+
+
 **Mann-Whitney U Test (Differences in Topic Entropy):**
 *   **Reliability:** In **COP26** and **Ukraine**, no significant difference in topic entropy was found between reliable and questionable users. However, in the **COVID** dataset, reliable users' topic entropy **stochastically dominated** questionable users' topic entropy, indicating a likely difference.
 *   **Political Leaning:**
@@ -47,62 +49,68 @@ Mann-Whitney tests between topic entropy and Political leaning.
     *   The 'Unknown' political leaning group often showed **significant differences** when compared to other leanings. In **COP26**, R, C, and L leanings all stochastically dominated 'Unknown'. In **COVID**, C-leaning users stochastically dominated 'Unknown'. In **Ukraine**, L-leaning users' topic entropy was stochastically dominated by 'Unknown'. This suggests the 'Unknown' category might represent a group with distinct topic engagement patterns across the datasets.
 *   **Individual vs. Organization:** In both **COP26** and **COVID**, individual users' topic entropy was **stochastically dominated** by organisation users, indicating that organisations tended to have higher topic entropy (i.e., less focused on a single topic). The **Ukraine** dataset also showed this one-sided stochastic dominance, although the two-sided test for overall difference was not significant (p=0.060). This implies a consistent pattern where individual users are more focused in their topic engagement than organisations across the board.
 
+***
 
+### 1. Statistical Test for Association (Categorical Data)
 
-Category tests not present!
+The $\chi^2$ test, paired with Cramer's V to measure effect size, was used to determine if there was an association between a user's metadata (e.g., reliability, political leaning, category) and their dominant topic assignment. An effect size (ES) between 0.2 and 0.6 is interpreted as a moderate association.
 
-### COP26 Dataset
+#### Consistency Across Datasets (All Associations are Moderate and Significant)
 
-**Chi-squared Test and Cramer's V (Association with Dominant Topic)**
-*   **Reliability:** The association was **not significant** (p=0.735) and was categorised as **weak** (Cramer's V=0.184).
-*   **Political Leaning:** This association was also **not significant** (p=0.119), but it showed a **moderate** effect size (Cramer's V=0.218).
-*   **Individual/Organization:** A **significant** association was found (p=0.008), with a **moderate** effect size (Cramer's V=0.271).
-*   **Category:** A **highly significant** association was observed (p=4.81e-05), also with a **moderate** effect size (Cramer's V=0.252).
+Across all three datasets (COP26, COVID, and UKRAINE), the statistical results consistently showed that user metadata variables are **significantly and moderately associated** with the assigned dominant topic.
 
-**Mann-Whitney U Test (Difference in Topic Entropy Distribution)**
-*   **Reliability (Reliable vs. Questionable):** There was **no significant difference** in topic entropy between reliable and questionable users (p=0.978).
-*   **Political Leaning (various comparisons):**
-    *   No significant differences were detected between R vs L (p=0.562), R vs C (p=0.728), or C vs L (p=0.226) leaning users.
-    *   However, **likely differences** were found when comparing specific leanings to 'Unknown' users:
-        *   **R vs Unknown:** R-leaning users' topic entropy **stochastically dominates** that of Unknown users (p=0.0036).
-        *   **C vs Unknown:** C-leaning users' topic entropy **stochastically dominates** that of Unknown users (p=0.00000).
-        *   **L vs Unknown:** L-leaning users' topic entropy **stochastically dominates** that of Unknown users (p=0.00003).
-*   **Individual vs. Organization:** A **likely difference** was observed (p=0.00018), with individual users' topic entropy being **stochastically dominated** by that of organisation users.
+| Metadata Variable | COP26 (Cramer's V) | COVID (Cramer's V) | UKRAINE (Cramer's V) |
+| :--- | :--- | :--- | :--- |
+| **Reliability** | 0.461 | 0.417 | 0.519 |
+| **Political Leaning** | 0.462 | 0.431 | 0.510 |
+| **Individual/Organization** | 0.503 | 0.504 | 0.541 |
+| **Category** | 0.482 | 0.426 | 0.526 |
 
-### COVID Dataset
+For all comparisons across all datasets, the p-values were low (e.g., far less than 0.05), indicating **strong evidence** that topic assignment and these metadata fields are not independent. The Cramer's V values consistently fell within the **moderate association range** (0.2 < ES $\le$ 0.6).
 
-**Chi-squared Test and Cramer's V (Association with Dominant Topic)**
-*   **Reliability:** A **significant** association was found (p=3.46e-12), with a **moderate** effect size (Cramer's V=0.417).
-*   **Political Leaning:** This also showed a **significant** association (p=1.83e-21) and a **moderate** effect size (Cramer's V=0.431).
-*   **Individual/Organization:** A **significant** association was present (p=2.74e-17), with a **moderate** effect size (Cramer's V=0.504).
-*   **Category:** A **highly significant** association was identified (p=4.83e-32), exhibiting a **moderate** effect size (Cramer's V=0.426).
+***
 
-**Mann-Whitney U Test (Difference in Topic Entropy Distribution)**
-*   **Reliability (Reliable vs. Questionable):** A **likely difference** was found (p=0.01095), where reliable users' topic entropy **stochastically dominates** that of questionable users.
-*   **Political Leaning (various comparisons):**
-    *   No significant differences were detected between R vs L (p=0.802), R vs Unknown (p=0.424), or L vs Unknown (p=0.383) leaning users.
-    *   **Likely differences** were observed in other comparisons:
-        *   **R vs C:** R-leaning users' topic entropy is **stochastically dominated** by C-leaning users (p=0.00000).
-        *   **C vs L:** C-leaning users' topic entropy **stochastically dominates** L-leaning users (p=0.00000).
-        *   **C vs Unknown:** C-leaning users' topic entropy **stochastically dominates** Unknown users (p=0.00000).
-*   **Individual vs. Organization:** A **likely difference** was detected (p=0.00000), with individual users' topic entropy being **stochastically dominated** by that of organisation users.
+### 2. Tests for Difference in Distribution (Topic Entropy)
 
-### Ukraine Dataset
+The Mann-Whitney U test compares whether two independent distributions (in this case, topic entropy of different user groups) are equal in location and shape. A p-value less than 0.05 indicates a likely difference.
 
-**Chi-squared Test and Cramer's V (Association with Dominant Topic)**
-*   **Reliability:** A **significant** association was found (p=0.0013), with a **moderate** effect size (Cramer's V=0.519).
-*   **Political Leaning:** This also showed a **significant** association (p=0.00046) and a **moderate** effect size (Cramer's V=0.510).
-*   **Individual/Organization:** A **significant** association was present (p=0.0033), with a **moderate** effect size (Cramer's V=0.541).
-*   **Category:** A **highly significant** association was identified (p=1.57e-07), exhibiting a **moderate** effect size (Cramer's V=0.526).
+#### Differences based on Reliability
 
-**Mann-Whitney U Test (Difference in Topic Entropy Distribution)**
-*   **Reliability (Reliable vs. Questionable):** There was **no significant difference** in topic entropy between reliable and questionable users (p=0.933).
-*   **Political Leaning (various comparisons):**
-    *   No significant differences were detected between R vs L (p=0.250), R vs C (p=0.323), R vs Unknown (p=0.150), or C vs Unknown (p=0.848) leaning users based on the two-sided test.
-    *   For **C vs L**, the two-sided test showed no significant difference (p=0.068), however, a one-sided test indicated that C-leaning users' topic entropy **stochastically dominates** L-leaning users'.
-    *   For **L vs Unknown**, a **likely difference** was found (p=0.01768), with L-leaning users' topic entropy being **stochastically dominated** by that of Unknown users.
-*   **Individual vs. Organization:** The two-sided test showed **no significant difference** (p=0.060) in topic entropy between individual and organisation users. However, a one-sided test indicated that individual users' topic entropy is **stochastically dominated** by that of organisation users.
+*   **COP26 & UKRAINE:** There was **no significant difference** in topic entropy detected between reliable and questionable users in the COP26 dataset (p-value: 0.52892) or the UKRAINE dataset (p-value: 0.93314).
+*   **COVID:** A **likely difference** was found in the COVID dataset (p-value: 0.01095). Here, **reliable users' topic entropy stochastically dominates questionable users' entropy**.
 
+#### Differences based on Individual vs. Organization Status
+
+*   **COP26:** There was **no significant difference** in topic entropy between Individual and Organization users (p-value: 0.43853).
+*   **UKRAINE:** There was **no significant difference** in the two-sided test (p-value: 0.06048). However, a one-sided test suggested that Individual users' topic entropy is stochastically dominated by Organization users' entropy.
+*   **COVID:** A **likely difference** was detected (p-value: 0.00000). Individual users' topic entropy is **stochastically dominated by Organization's** entropy.
+
+#### Differences based on Political Leaning
+
+The Mann-Whitney U test revealed varying levels of difference based on political leaning (R=Right, L=Left, C=Centrist, Unknown) across the three datasets:
+
+**A. Comparisons between R, L, and C:**
+
+*   **R vs L, R vs C, C vs L (COP26 & UKRAINE):** No significant difference in topic entropy was detected between R, L, and C leaning users in the COP26 or UKRAINE datasets.
+*   **R vs C (COVID):** A **likely difference** was found (p=0.00000), where R-leaning users' topic entropy is stochastically dominated by C's.
+*   **C vs L (COVID):** A **likely difference** was found (p=0.00000), where C-leaning users' topic entropy stochastically dominates L's.
+*   **C vs L (UKRAINE):** The two-sided test was not significant (p=0.06792), but a one-sided test indicated that C-leaning users' topic entropy stochastically dominates L's.
+
+**B. Comparisons between Specific Leaning and Unknown:**
+
+The greatest variation occurs when comparing users with specific leanings (R, C, L) against those with an "Unknown" leaning:
+
+| Comparison | COP26 Result | COVID Result | UKRAINE Result |
+| :--- | :--- | :--- | :--- |
+| **R vs Unknown** | **Likely difference** (p=0.00099). R stochastically dominates Unknown's entropy. | No significant difference (p=0.42373). | No significant difference (p=0.14972). |
+| **C vs Unknown** | **Likely difference** (p=6.96e-05). C stochastically dominates Unknown's entropy. | **Likely difference** (p=0.00000). C stochastically dominates Unknown's entropy. | No significant difference (p=0.84842). |
+| **L vs Unknown** | **Likely difference** (p<0.05). L stochastically dominates Unknown's entropy. | No significant difference (p=0.38324). | **Likely difference** (p=0.01768). L is stochastically dominated by Unknown's entropy. |
+
+In summary:
+
+*   **COP26** showed that **all specified political leanings (R, C, and L)** had topic entropies that stochastically dominated the 'Unknown' group's entropy (i.e., known leanings tended to have *lower* entropy/higher focus).
+*   **COVID** only showed a **likely difference for Centrist (C)** users versus Unknown, with C stochastically dominating Unknown.
+*   **UKRAINE** showed a **likely difference only for Left (L)** users versus Unknown, but in this case, L's entropy was stochastically *dominated by* Unknown's (meaning L-leaning users had *lower* entropy than the Unknown group).
 ## Methodology (Heavy AI Help)
 
 ### Topic Model
